@@ -38,7 +38,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       <Card className="border-border/80 bg-card/95 shadow-xl shadow-primary/5">
         <CardHeader className="gap-4 p-7 pb-5">
           <div className="flex items-center gap-3 text-primary"><span className="grid size-10 place-items-center bg-primary font-serif text-lg font-bold text-primary-foreground">A</span><span className="font-mono text-xs font-semibold uppercase tracking-[0.24em]">Asadero Pro</span></div>
-          <div className="flex flex-col gap-2"><CardTitle className="font-serif text-3xl tracking-tight">Entra en la cocina.</CardTitle><CardDescription>Crea tu acceso para ordenar la operación con precisión.</CardDescription></div>
+          <div className="flex flex-col gap-2"><CardTitle className="font-mono text-3xl tracking-tight">Entra en la cocina.</CardTitle><CardDescription>Crea tu acceso para ordenar la operación con precisión.</CardDescription></div>
         </CardHeader>
         <CardContent className="p-7 pt-0">
           <form onSubmit={handleSignUp} className="flex flex-col gap-5">

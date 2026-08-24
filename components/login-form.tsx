@@ -42,7 +42,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
             <span className="font-mono text-xs font-semibold uppercase tracking-[0.24em]">Asadero Pro</span>
           </div>
           <div className="flex flex-col gap-2">
-            <CardTitle className="font-serif text-3xl tracking-tight">Vuelve al fuego.</CardTitle>
+            <CardTitle className="font-mono text-3xl tracking-tight">Vuelve al fuego.</CardTitle>
             <CardDescription>Accede a tu operación y mantén cada servicio bajo control.</CardDescription>
           </div>
         </CardHeader>
