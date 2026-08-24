@@ -1,5 +1,15 @@
 {
   "version": 1,
   "project": "asadero-pro",
-  "features": []
+  "features": [
+    {
+      "id": "nextjs-supabase-scaffold",
+      "title": "Next.js 15 + Supabase project bootstrap",
+      "status": "done",
+      "verification": "manual",
+      "spec": "specs/nextjs-supabase-scaffold/",
+      "spec_path": "specs/nextjs-supabase-scaffold/",
+      "progress_path": "progress/nextjs-supabase-scaffold.md"
+    }
+  ]
 }
