@@ -9,3 +9,4 @@ Dependencies point inwards. Layout: `src/domains/<context>/{domain,application,i
 - `src/app/` and `presentation/` never import `@supabase/supabase-js`; use query adapters.
 - Schema and RLS: `docs/database-schema.md`. Migrations only (`docs/supabase.md`).
 - Details: `docs/architecture.md` and `docs/conventions.md`.
+- Presentation/UI visual rules: repo-root `DESIGN.md` (see `.cursor/rules/ui-design.mdc`).

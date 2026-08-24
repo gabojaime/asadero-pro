@@ -27,11 +27,14 @@ const REQUIRED_FILES = [
 	'docs/specs.md',
 	'docs/verification.md',
 	'docs/decisions/001-harness-independent-of-reental.md',
+	'docs/decisions/002-presentation-follows-design-md.md',
+	'DESIGN.md',
 	'progress/README.md',
 	'specs/README.md',
 	'.cursor/rules/00-asadero-harness.mdc',
 	'.cursor/rules/skills-routing.mdc',
-	'.cursor/rules/hexagonal-architecture.mdc'
+	'.cursor/rules/hexagonal-architecture.mdc',
+	'.cursor/rules/ui-design.mdc'
 ]
 
 const VALID_STATUSES = new Set([

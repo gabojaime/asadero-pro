@@ -48,6 +48,7 @@ Spec files are **English**. User-facing conversation about the spec is Spanish.
 - Domain touchpoints: `entities`, ports, use cases, query adapters, presentation
 - Tables/columns from `docs/database-schema.md` (or a new migration if the spec extends schema)
 - Performance budgets when UI is chart-heavy or list-heavy
+- **UI features:** reference [DESIGN.md](../DESIGN.md) — tokens (color, type, radius), Tailwind/shadcn mapping, and which DESIGN.md components to reuse (e.g. Metric Tile, waste input row, live order queue). Do not specify a competing palette or shadow system.
 - **No Reental/Web3/GraphQL sections** unless a future spec explicitly adds them
 
 ### tasks.md

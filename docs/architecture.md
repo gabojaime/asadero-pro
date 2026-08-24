@@ -100,6 +100,10 @@ Query keys follow `['collection', merchantId, filters]` (see `docs/conventions.m
 
 React components and page-level views. Subscribe to query adapters. Handle UI state (modals, inputs, charts) and loading/error.
 
+Pages remain **view containers**. Visual language (tokens, typography, radius, component patterns, antipatterns) comes from [DESIGN.md](../DESIGN.md) at the repo root — not from a second design system and not from inventing styles in the page. See `docs/conventions.md` (Presentation / UI) and `.cursor/rules/ui-design.mdc`.
+
+Until the app is moved into `src/`, the same rule applies to the scaffold `app/` and `components/` trees.
+
 ## Routing rules
 
 From `.cursor/rules/routing-map.md`, applied under `src/app/`:

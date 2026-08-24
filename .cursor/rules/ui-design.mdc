@@ -1,0 +1,26 @@
+---
+description: asadero-pro presentation/UI must follow DESIGN.md (tokens, components, visual antipatterns)
+alwaysApply: false
+globs: app/**/*.tsx,components/**/*.tsx,src/app/**/*.tsx,src/domains/**/presentation/**/*.tsx,src/shared/presentation/**/*.tsx,app/globals.css,**/*.css
+---
+
+# Presentation follows DESIGN.md
+
+When editing UI, **read [DESIGN.md](../../DESIGN.md)** first. It is the visual contract. Do not invent a second design system.
+
+## Obligations
+
+- Map colors, type, and radius to DESIGN.md tokens (Flame Red `#e11d48` as the **only** interactive accent).
+- Use shadcn/ui + Tailwind as specified in DESIGN.md section 3.
+- Reuse named patterns: Metric Tile, Raw Material Waste Input Row, Live Order Queue Item — do not restyle them ad hoc.
+- Font weights: 300 / 400 / 600 / 700 only — **never** weight 500.
+- Surfaces: flat cards, 1px hairline borders — **no** `shadow-lg` / `shadow-2xl`.
+- Numbers always show units or thresholds (`kg`, `g`, `%`).
+
+## Scaffold
+
+The `with-supabase` starter may not match DESIGN.md. **DESIGN.md wins for new UI.** Do not restyle the whole scaffold unless a spec requires it.
+
+## Layers
+
+Pages are view containers (`docs/architecture.md`). Domain and application stay free of visual tokens. Details: `docs/conventions.md` Presentation / UI.

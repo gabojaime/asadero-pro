@@ -77,6 +77,20 @@ import { useRawMaterials } from '@/domains/raw-materials/infrastructure/query-ad
 
 Presentation may import query adapters and domain types. It may not import `@supabase/supabase-js`.
 
+## Presentation / UI
+
+[DESIGN.md](../DESIGN.md) (repo root) is the **mandatory visual contract** for presentation work. Implementer and reviewer must follow it for tokens, typography, radius, shadcn/Tailwind mapping, named components (metric tile, waste input row, live order queue), and prohibited antipatterns. **Do not invent a parallel design system.**
+
+Applies to:
+
+- Current scaffold: `app/`, `components/` (Next.js `with-supabase` template)
+- Future hexagonal layout: `src/app/`, `src/domains/*/presentation/`, `src/shared/presentation/`
+- Global CSS that encodes tokens (`app/globals.css` and other `*.css` that style product UI)
+
+**Scaffold vs DESIGN.md:** the `with-supabase` starter styling may disagree with DESIGN.md (default shadcn palette, shadows, extra accents). **DESIGN.md wins for new UI.** Do not restyle the entire scaffold unless a spec or DESIGN.md itself requires existing pages to comply.
+
+Cursor rule: `.cursor/rules/ui-design.mdc`. ADR: [docs/decisions/002-presentation-follows-design-md.md](decisions/002-presentation-follows-design-md.md).
+
 ## Roles (MVP)
 
 `user_role`: `admin` | `grill_master` | `waiter` (see `docs/database-schema.md`). Specs must state which roles can mutate inventory vs orders vs waste.

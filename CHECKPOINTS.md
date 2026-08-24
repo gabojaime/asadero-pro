@@ -28,6 +28,12 @@ This checklist is for the BBQ multi-tenant MVP. It is **not** the Reental checkl
 - [ ] Routes live under `src/app/(auth)/` or `src/app/(app)/` as specified in `docs/architecture.md`
 - [ ] Auth guard for `(app)` is middleware or a Server Component `redirect()`, not a client-only check as the security boundary
 
+## Presentation / UI
+
+Applies when the feature changes pages, components, or CSS (including the current `app/` + `components/` scaffold).
+
+- [ ] Presentation changes match [DESIGN.md](DESIGN.md) (tokens, named components, typography/radius rules, prohibited antipatterns). No parallel design system.
+
 ## Data & tenancy
 
 - [ ] Schema changes landed as Supabase migrations (`docs/supabase.md`), not Studio-only edits

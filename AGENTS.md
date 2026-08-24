@@ -10,6 +10,7 @@ When a user-level agent file contains a "Reental patterns" or "Reental-specific 
 
 | Resource | Description |
 |----------|-------------|
+| [DESIGN.md](DESIGN.md) | Canonical presentation/UI contract (tokens, components, visual rules) |
 | [docs/architecture.md](docs/architecture.md) | Stack, hexagonal layers, folder layout, routes |
 | [docs/conventions.md](docs/conventions.md) | Coding patterns, language, immutability |
 | [docs/database-schema.md](docs/database-schema.md) | PostgreSQL tables, indexes, RLS |
@@ -48,7 +49,7 @@ Only invoke skills listed here. Read full `SKILL.md` when the task matches.
 
 | Priority | Skill / agent | When |
 |----------|---------------|------|
-| **High** | `frontend-ui-engineering` | UI, layouts, dashboard, forms, App Router pages |
+| **High** | `frontend-ui-engineering` | UI, layouts, dashboard, forms, App Router pages — **must also follow [DESIGN.md](DESIGN.md)** |
 | **High** | `incremental-implementation` | Implementer executing `tasks.md` |
 | **High** | `security-and-hardening` | Auth, RLS, multi-tenant isolation, roles |
 | Medium | `planning-and-task-breakdown` | spec_author decomposing work (output still goes to `specs/<feature>/`) |
@@ -72,6 +73,8 @@ Only invoke skills listed here. Read full `SKILL.md` when the task matches.
 | **Do not use** | `deprecation-and-migration` | Unless an explicit migration task |
 
 **Harness wins:** specs in `specs/<feature>/`, progress in `progress/<feature>.md` — not addyosmani `tasks/plan.md`.
+
+- **Presentation:** When touching UI, follow [DESIGN.md](DESIGN.md) (tokens, primitives, component patterns, antipatterns). Do not invent a parallel design system. Hexagonal domain/application layers stay unchanged ([docs/decisions/002-presentation-follows-design-md.md](docs/decisions/002-presentation-follows-design-md.md)).
 
 Project-local skills: none yet. Product rules (not skills) remain under `.cursor/rules/`.
 
