@@ -1,0 +1,11 @@
+---
+description: Hexagonal architecture constraints for asadero-pro
+alwaysApply: true
+---
+
+Dependencies point inwards. Layout: `src/domains/<context>/{domain,application,infrastructure,presentation}`, routes in `src/app/(auth)` and `src/app/(app)`, shared code in `src/shared/`.
+
+- `domain/` is pure TypeScript — no React, Next, Supabase, or TanStack Query imports.
+- `src/app/` and `presentation/` never import `@supabase/supabase-js`; use query adapters.
+- Schema and RLS: `docs/database-schema.md`. Migrations only (`docs/supabase.md`).
+- Details: `docs/architecture.md` and `docs/conventions.md`.

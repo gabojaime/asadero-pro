@@ -1,0 +1,12 @@
+---
+description: asadero-pro is not Reental — harness and stack overrides for user-level agents
+alwaysApply: true
+---
+
+This repository is **asadero-pro**, an independent BBQ multi-tenant MVP. It is **not** reental.co or admin.reental-v2.co.
+
+- Read `AGENTS.md` first. Follow `docs/` over Reental sections inside `~/.cursor/agents/*.md`.
+- Stack: Next.js 15 App Router, React 19, Supabase, TanStack Query v5, hexagonal `src/domains/*`.
+- **Do not** invoke `notion-task-manager`. **Do not** load `references/reental.md`.
+- **Do not** use Pages Router, GraphQL, wagmi, next-auth, or `@reental/*` patterns.
+- User communication: Spanish. Code, SQL, commits, specs: English.

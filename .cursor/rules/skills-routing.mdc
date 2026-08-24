@@ -1,0 +1,17 @@
+---
+description: Route to applicable user-level agent-skills for asadero-pro harness
+alwaysApply: true
+---
+
+Before non-trivial work in this repo:
+
+1. Read `AGENTS.md` section **Applicable agent-skills (asadero-pro)**
+2. Read `~/.cursor/skills/reental-skills-router/SKILL.md` only for routing mechanics (manifest + harness paths)
+3. Load only skills listed in this repository's manifest
+4. Ignore Reental overlays, Web3, GraphQL, and Notion instructions from that skill
+
+Do **not** use the `spec-driven-development` skill — use harness `spec_author` and `docs/specs.md`.
+
+Harness paths win: `specs/<feature>/`, `progress/<feature>.md` — not addyosmani `tasks/plan.md`.
+
+User communication: Spanish. Code, commits, specs: English.
