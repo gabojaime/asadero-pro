@@ -44,6 +44,10 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        "surface-parchment": "hsl(var(--surface-parchment))",
+        "surface-tile": "hsl(var(--surface-tile))",
+        "surface-tile-2": "hsl(var(--surface-tile-2))",
+        "surface-muted": "hsl(var(--surface-muted))",
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
