@@ -10,6 +10,15 @@
       "spec": "specs/nextjs-supabase-scaffold/",
       "spec_path": "specs/nextjs-supabase-scaffold/",
       "progress_path": "progress/nextjs-supabase-scaffold.md"
+    },
+    {
+      "id": "hexagonal-folder-restructure",
+      "title": "Reorganize scaffold into canonical hexagonal src/ layout",
+      "status": "done",
+      "verification": "manual",
+      "spec": "specs/hexagonal-folder-restructure/",
+      "spec_path": "specs/hexagonal-folder-restructure/",
+      "progress_path": "progress/hexagonal-folder-restructure.md"
     }
   ]
 }
