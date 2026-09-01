@@ -1,30 +1,21 @@
-# Database schema — asadero-pro
-
-Canonical PostgreSQL schema for the multi-tenant BBQ MVP. Source: `.cursor/rules/01-dabasase.md`.
-
-All table names, columns, indexes, and policies are English. Agents must not change schema via Studio; use migrations (`docs/supabase.md`).
-
-## DDL
-
-```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE merchants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    address VARCHAR(255),
-    phone VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE merchants IS 'BBQ business instances for multi-tenant isolation.';
 
-`address` and `phone` are optional contact fields (nullable). Onboarding persists NULL when omitted or blank.
+ALTER TABLE public.merchants
+  ADD COLUMN address VARCHAR(255),
+  ADD COLUMN phone VARCHAR(255);
 
 CREATE TYPE user_role AS ENUM ('admin', 'grill_master', 'waiter');
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY,
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL UNIQUE,
     full_name VARCHAR(255) NOT NULL,
@@ -123,13 +114,7 @@ CREATE TABLE table_sessions_log (
 );
 
 COMMENT ON TABLE table_sessions_log IS 'Logs completed table sessions to feed occupancy and turnover metrics.';
-```
 
-`users.id` is expected to match `auth.uid()` (Supabase Auth user id).
-
-## Indexes
-
-```sql
 CREATE INDEX idx_users_merchant ON users(merchant_id);
 CREATE INDEX idx_inventory_merchant ON raw_materials_inventory(merchant_id);
 CREATE INDEX idx_menu_items_merchant ON menu_items(merchant_id);
@@ -141,13 +126,7 @@ CREATE INDEX idx_orders_status ON orders(merchant_id, status);
 CREATE INDEX idx_orders_created_at ON orders(merchant_id, created_at);
 CREATE INDEX idx_waste_created_at ON waste_logs(merchant_id, created_at);
 CREATE INDEX idx_sessions_closed_at ON table_sessions_log(merchant_id, closed_at);
-```
 
-## Row Level Security
-
-Enable RLS on all operational tables. Tenant isolation uses `get_user_merchant_id()`, **not** `auth.uid() = merchants.id`.
-
-```sql
 ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE raw_materials_inventory ENABLE ROW LEVEL SECURITY;
@@ -217,28 +196,7 @@ CREATE POLICY "Users can manage table sessions of their merchant"
 ON table_sessions_log FOR ALL TO authenticated
 USING (merchant_id = get_user_merchant_id())
 WITH CHECK (merchant_id = get_user_merchant_id());
-```
 
-Role-specific mutation rules (who may write inventory vs waste vs orders) must be refined in a spec; the policies above are the minimum tenant fence from the original rule file, plus the tables that were missing policies.
-
-## Domain mapping
-
-| Table column | Domain field |
-|--------------|--------------|
-| `stock_kg` | `stockKg` |
-| `unit_cost` | `unitCost` |
-| `merchant_id` | `merchantId` |
-| `last_updated` | `updatedAt` (or `lastUpdated` — pick one per entity and keep it) |
-| `weight_kg` | `weightKg` |
-| `quantity_kg` | `quantityKg` |
-
-Do not add `safety_stock_kg` or `stock_transactions_log` unless a spec and migration introduce them.
-
-## Onboarding RPC
-
-Bootstrap path for the first merchant admin (see `specs/merchant-onboarding/design.md`):
-
-```sql
 CREATE OR REPLACE FUNCTION public.create_merchant_and_admin_profile(
   p_merchant_name text,
   p_full_name text,
@@ -246,7 +204,44 @@ CREATE OR REPLACE FUNCTION public.create_merchant_and_admin_profile(
   p_phone text DEFAULT NULL
 )
 RETURNS uuid
--- SECURITY DEFINER; GRANT EXECUTE TO authenticated only
-```
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_merchant_id uuid;
+  v_email text;
+  v_address text;
+  v_phone text;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated';
+  END IF;
 
-Callable by authenticated users without a `public.users` row. Creates one `merchants` row and one `users` row bound to `auth.uid()`.
+  IF EXISTS (SELECT 1 FROM public.users WHERE id = v_user_id) THEN
+    RAISE EXCEPTION 'already_onboarded';
+  END IF;
+
+  IF trim(p_merchant_name) = '' OR trim(p_full_name) = '' THEN
+    RAISE EXCEPTION 'invalid_input';
+  END IF;
+
+  v_address := NULLIF(trim(COALESCE(p_address, '')), '');
+  v_phone := NULLIF(trim(COALESCE(p_phone, '')), '');
+
+  SELECT email INTO v_email FROM auth.users WHERE id = v_user_id;
+
+  INSERT INTO public.merchants (name, address, phone)
+  VALUES (trim(p_merchant_name), v_address, v_phone)
+  RETURNING id INTO v_merchant_id;
+
+  INSERT INTO public.users (id, merchant_id, email, full_name, role)
+  VALUES (v_user_id, v_merchant_id, v_email, trim(p_full_name), 'admin');
+
+  RETURN v_merchant_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_merchant_and_admin_profile(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_merchant_and_admin_profile(text, text, text, text) TO authenticated;

@@ -3,8 +3,11 @@ import { EnvVarWarning } from "@/shared/presentation/env-var-warning";
 import { AuthButton } from "@/shared/presentation/auth-button";
 import { ThemeSwitcher } from "@/shared/presentation/theme-switcher";
 import { hasEnvVars } from "@/lib/utils";
+import { ProtectedSessionGate } from "@/domains/auth/presentation/components/protected-session-gate";
 import Link from "next/link";
 import { Suspense } from "react";
+
+export const instant = false;
 
 export default function ProtectedLayout({
   children,
@@ -31,9 +34,20 @@ export default function ProtectedLayout({
             )}
           </div>
         </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
-          {children}
-        </div>
+        <Suspense
+          fallback={
+            <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5 animate-pulse">
+              <div className="h-8 w-48 rounded bg-muted" />
+              <div className="h-64 rounded bg-muted" />
+            </div>
+          }
+        >
+          <ProtectedSessionGate>
+            <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
+              {children}
+            </div>
+          </ProtectedSessionGate>
+        </Suspense>
 
         <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
           <p>

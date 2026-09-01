@@ -1,2 +1,5 @@
-// Placeholder — define repository ports in a future feature.
-export type RepositoryPlaceholder = never;
+import type { SessionProfile } from "./entities";
+
+export interface SessionProfileRepository {
+  getByUserId(userId: string, email: string): Promise<SessionProfile>;
+}

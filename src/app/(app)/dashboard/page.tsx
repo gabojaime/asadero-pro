@@ -5,6 +5,8 @@ import { InfoIcon } from "lucide-react";
 import { FetchDataSteps } from "@/shared/presentation/tutorial/fetch-data-steps";
 import { Suspense } from "react";
 
+export const instant = false;
+
 async function UserDetails() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();

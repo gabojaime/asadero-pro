@@ -19,6 +19,16 @@
       "spec": "specs/hexagonal-folder-restructure/",
       "spec_path": "specs/hexagonal-folder-restructure/",
       "progress_path": "progress/hexagonal-folder-restructure.md"
+    },
+    {
+      "id": "merchant-onboarding",
+      "title": "Merchant Onboarding & User Registration",
+      "status": "review_pending",
+      "verification": "manual",
+      "notes": "Implementation started 2026-08-25. Hybrid Vitest for domain validations.",
+      "spec": "specs/merchant-onboarding/",
+      "spec_path": "specs/merchant-onboarding/",
+      "progress_path": "progress/merchant-onboarding.md"
     }
   ]
 }

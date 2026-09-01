@@ -25,7 +25,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     setError(null);
     if (password !== repeatPassword) { setError("Las contraseñas no coinciden"); setIsLoading(false); return; }
     try {
-      const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/dashboard` } });
+      const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/onboarding` } });
       if (error) throw error;
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {

@@ -1,10 +1,13 @@
+import { Button } from "@/shared/presentation/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/shared/presentation/ui/card";
+import Link from "next/link";
 
 export default function Page() {
   return (
@@ -13,7 +16,7 @@ export default function Page() {
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-2xl text-primary">
                 Thank you for signing up!
               </CardTitle>
               <CardDescription>Check your email to confirm</CardDescription>
@@ -24,6 +27,14 @@ export default function Page() {
                 confirm your account before signing in.
               </p>
             </CardContent>
+            <CardFooter>
+              <Button className="w-full">
+                <Link href="/onboarding" className="">
+                  Crear mi espacio de trabajo
+                </Link>
+              </Button>
+            </CardFooter>
+
           </Card>
         </div>
       </div>
