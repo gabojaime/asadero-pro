@@ -140,6 +140,50 @@ export interface StockTransaction {
 ```
 
 #### Validation Logic (`validations.ts`)
+
+Domain input validation and business rules live in `validations.ts`. Use **[Zod](https://zod.dev)** (import `* as z from "zod"`) for entity and command validation — Zod is allowed in the domain layer (pure TS, no React/Next/Supabase).
+
+| Pattern | When to use |
+|---------|-------------|
+| `z.object({ ... })` + `.safeParse()` | Form/command input; map issues to field errors instead of throwing |
+| `z.infer<typeof schema>` | Derive types from schemas when it avoids duplicating entity shapes |
+| Pure functions (boolean / math) | Invariants on loaded entities (e.g. stock sufficiency) |
+
+**Rules:**
+
+- **Domain is the source of truth** for validation rules. Application use cases call domain validators; presentation may reuse exported schemas or the same validator functions — do not duplicate rules in UI.
+- Prefer `.safeParse()` in functions that return `Result`-like outcomes; use `.parse()` only when throwing is intentional.
+- Optional string fields: trim, enforce max length, map blank/whitespace to `null` when the product stores NULL.
+- Export schemas (e.g. `onboardingInputSchema`) when presentation or tests need them; keep orchestration in named functions (e.g. `validateOnboardingInput`).
+
+**Example — Zod input validation (merchants onboarding):**
+
+```typescript
+import * as z from "zod";
+
+const requiredTrimmedField = (requiredMessage: string, maxLengthMessage: string) =>
+  z.string().transform((value) => value.trim()).pipe(
+    z.string().min(1, requiredMessage).max(255, maxLengthMessage),
+  );
+
+export const onboardingInputSchema = z.object({
+  merchantName: requiredTrimmedField("Business name is required.", "Max 255 characters."),
+  ownerFullName: requiredTrimmedField("Full name is required.", "Max 255 characters."),
+  address: optionalNullableTrimmedField("Max 255 characters.").optional(),
+  phone: optionalNullableTrimmedField("Max 255 characters.").optional(),
+});
+
+export function validateOnboardingInput(input: OnboardingInput): ValidationResult {
+  const result = onboardingInputSchema.safeParse(input);
+  if (!result.success) {
+    return { success: false, fieldErrors: mapZodIssuesToFieldErrors(result.error.issues) };
+  }
+  return { success: true, data: { ...result.data, address: result.data.address ?? null, phone: result.data.phone ?? null } };
+}
+```
+
+**Example — pure business rule (no Zod):**
+
 ```typescript
 import { RawMaterial } from './entities';
 

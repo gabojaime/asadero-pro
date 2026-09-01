@@ -86,6 +86,22 @@ Pure TypeScript entities, value objects, and business math (recipe deductions, w
 
 **Prohibited imports:** `@supabase/supabase-js`, `@tanstack/react-query`, `react`, `next/*`.
 
+#### Domain validation (`domain/validations.ts`)
+
+Each bounded context owns `domains/<context>/domain/validations.ts`. Use **[Zod](https://zod.dev)** for input and command validation (`import * as z from "zod"`). Zod belongs in the domain layer — not only in presentation.
+
+| Pattern | When to use |
+|---------|-------------|
+| `z.object({ ... })` + `.safeParse()` | User/form input; return field errors from mapped `ZodIssue`s |
+| `z.infer<typeof schema>` | Infer types when it reduces duplication with entity types |
+| Pure functions | Business invariants on loaded entities (e.g. stock checks) |
+
+- **Domain validators are the source of truth.** Application use cases call them before persistence; UI may reuse exported schemas or the same functions — avoid duplicating rules in forms.
+- Prefer `.safeParse()` for Result-like APIs; use `.parse()` only when throwing is acceptable.
+- Optional strings: trim, max length, blank/whitespace → `null` when the DB stores NULL.
+
+See `.cursor/rules/02-architecture.md` §4.1 for scaffolding examples (merchants onboarding + raw-materials rules).
+
 ### 2. Application (instructions)
 
 Use cases orchestrate: fetch from a repository port → validate with domain → persist through the port. Depend on interfaces, never on `createClient()`.

@@ -241,3 +241,18 @@
 
 **Notes:** Hexagonal boundary preserved — Supabase stays in infrastructure; presentation gates call the server helper only.
 
+## 2026-09-01 17:52 — implementer
+
+**Task:** Adopt Zod for merchants domain validation + architecture docs.
+
+**Changes:**
+- `package.json`, `pnpm-lock.yaml` — added `zod@4.5.4`
+- `src/domains/merchants/domain/validations.ts` — Zod schemas (`onboardingInputSchema`), `safeParse`, preserved `validateOnboardingInput` Result API
+- `docs/architecture.md` — Domain validation section (Zod, safeParse, domain as source of truth)
+- `.cursor/rules/02-architecture.md` — §4.1 validation scaffolding with Zod + pure-rule examples
+- `src/domains/auth/domain/validations.ts` — pointer comment to architecture docs
+
+**Verification:** `pnpm test src/domains/merchants` — 9/9 passed.
+
+**Notes:** Public function signatures unchanged; use-cases and onboarding form untouched. Optional address/phone omitted → `null` in normalized output.
+
