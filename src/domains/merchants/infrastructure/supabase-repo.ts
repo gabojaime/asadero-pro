@@ -41,8 +41,8 @@ export function createMerchantOnboardingRepository(
         {
           p_merchant_name: input.merchantName,
           p_full_name: input.ownerFullName,
-          p_address: input.address,
-          p_phone: input.phone,
+          p_address: input.address ?? undefined,
+          p_phone: input.phone ?? undefined,
         },
       );
 
