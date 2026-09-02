@@ -1,8 +1,16 @@
 import Link from "next/link";
-import { ArrowUpRight, Check, Flame, Gauge, Menu, Scale, TrendingUp } from "lucide-react";
+import { Suspense } from "react";
+import { Check, Flame, Gauge, Scale, TrendingUp } from "lucide-react";
 
+import {
+  LandingClosingCta,
+  LandingClosingCtaFallback,
+  LandingHeroCtas,
+  LandingHeroCtasFallback,
+  LandingNavActions,
+  LandingNavActionsFallback,
+} from "@/domains/auth/presentation/components/landing-session-ctas";
 import { Badge } from "@/shared/presentation/ui/badge";
-import { Button } from "@/shared/presentation/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/presentation/ui/card";
 
 const metrics = [
@@ -61,16 +69,37 @@ export default function Home() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between px-5 sm:px-8">
         <Logo />
-        <nav className="flex items-center gap-3" aria-label="Navegación principal"><Link href="#como-funciona" className="hidden px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:block">Cómo funciona</Link><Button asChild variant="ghost" size="sm"><Link href="/login">Acceder</Link></Button><Button asChild size="sm" className="hidden rounded-full px-5 sm:inline-flex"><Link href="/login">Entrar al sistema <ArrowUpRight data-icon="inline-end" /></Link></Button><Button variant="ghost" size="icon" className="sm:hidden" aria-label="Abrir menú"><Menu data-icon="inline-start" /></Button></nav>
+        <Suspense fallback={<LandingNavActionsFallback />}>
+          <LandingNavActions />
+        </Suspense>
       </header>
 
-      <section className="bg-background px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24"><div className="mx-auto max-w-5xl text-center"><Badge variant="outline" className="rounded-full border-primary/30 px-3 py-1 font-normal text-primary">Ingeniería para el oficio</Badge><h1 className="mx-auto mt-7 max-w-4xl text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.065em] sm:text-7xl lg:text-8xl">El control de tu asadero, <span className="text-primary">a punto.</span></h1><p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Asadero Pro convierte cada kilogramo, receta y merma en decisiones claras para proteger el margen de tu cocina.</p><div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"><Button asChild size="lg" className="w-full rounded-full px-7 sm:w-auto"><Link href="/login">Iniciar sesión <ArrowUpRight data-icon="inline-end" /></Link></Button><Button asChild size="lg" variant="outline" className="w-full rounded-full px-7 sm:w-auto"><Link href="#como-funciona">Conocer la plataforma</Link></Button></div></div><div className="mx-auto mt-16 max-w-6xl sm:mt-24"><DashboardPreview /></div></section>
+      <section className="bg-background px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
+        <div className="mx-auto max-w-5xl text-center">
+          <Badge variant="outline" className="rounded-full border-primary/30 px-3 py-1 font-normal text-primary">Ingeniería para el oficio</Badge>
+          <h1 className="mx-auto mt-7 max-w-4xl text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.065em] sm:text-7xl lg:text-8xl">El control de tu asadero, <span className="text-primary">a punto.</span></h1>
+          <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Asadero Pro convierte cada kilogramo, receta y merma en decisiones claras para proteger el margen de tu cocina.</p>
+          <Suspense fallback={<LandingHeroCtasFallback />}>
+            <LandingHeroCtas />
+          </Suspense>
+        </div>
+        <div className="mx-auto mt-16 max-w-6xl sm:mt-24"><DashboardPreview /></div>
+      </section>
 
       <section id="como-funciona" className="bg-surface-parchment px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-end"><div><p className="text-sm font-semibold text-primary">La merma es dinero quemado</p><h2 className="mt-4 max-w-xl text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Precisión donde el asadero realmente gana.</h2></div><p className="max-w-md text-base leading-7 text-muted-foreground">No necesitas más datos. Necesitas los datos correctos: cuánto entró crudo, cuánto se transformó y cuánto llegó al plato.</p></div><div className="mx-auto mt-14 grid max-w-6xl gap-px overflow-hidden rounded-xl bg-border md:grid-cols-3">{features.map(([title, description]) => <article key={title} className="bg-background p-7 sm:p-9"><h3 className="text-xl font-semibold tracking-[-0.035em]">{title}</h3><p className="mt-4 text-sm leading-6 text-muted-foreground">{description}</p><Check className="mt-10 text-primary" aria-hidden="true" /></article>)}</div></section>
 
       <section className="bg-surface-tile px-5 py-20 text-white sm:px-8 sm:py-28"><div className="mx-auto max-w-6xl"><div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold text-primary">Una operación que responde</p><h2 className="mt-4 max-w-2xl text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Del inventario en crudo al margen real.</h2></div><p className="max-w-xs text-sm leading-6 text-surface-muted">Tres métricas para leer el pulso de tu negocio sin ruido.</p></div><div className="mt-14 grid gap-3 md:grid-cols-3">{metrics.map(({ label, value, note }) => <div key={label} className="rounded-xl bg-surface-tile-2 p-6"><p className="text-sm text-surface-muted">{label}</p><p className="mt-8 text-4xl font-light tracking-[-0.06em]">{value}</p><p className="mt-3 text-sm text-surface-muted">{note}</p></div>)}</div></div></section>
 
-      <section className="bg-background px-5 py-24 text-center sm:px-8 sm:py-32"><div className="mx-auto max-w-3xl"><p className="text-sm font-semibold text-primary">Tu siguiente servicio empieza aquí</p><h2 className="mt-5 text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Más control. Menos intuición.</h2><p className="mx-auto mt-6 max-w-xl text-base leading-7 text-muted-foreground">Entra a Asadero Pro y lleva la precisión del oficio a cada decisión de tu operación.</p><Button asChild size="lg" className="mt-9 rounded-full px-8"><Link href="/login">Iniciar sesión <ArrowUpRight data-icon="inline-end" /></Link></Button></div></section>
+      <section className="bg-background px-5 py-24 text-center sm:px-8 sm:py-32">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-sm font-semibold text-primary">Tu siguiente servicio empieza aquí</p>
+          <h2 className="mt-5 text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-6xl">Más control. Menos intuición.</h2>
+          <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-muted-foreground">Entra a Asadero Pro y lleva la precisión del oficio a cada decisión de tu operación.</p>
+          <Suspense fallback={<LandingClosingCtaFallback />}>
+            <LandingClosingCta />
+          </Suspense>
+        </div>
+      </section>
       <footer className="border-t bg-background px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><Logo /><p>Precisión para el oficio.</p></div></footer>
     </main>
   );
