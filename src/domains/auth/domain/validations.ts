@@ -12,9 +12,8 @@ const emailField = z
   .transform((value) => value.trim())
   .pipe(
     z
-      .string()
-      .min(1, "El correo electrónico es obligatorio.")
       .email("Ingresa un correo electrónico válido.")
+      .refine((value) => value.length > 0, "El correo electrónico es obligatorio.")
       .max(MAX_AUTH_FIELD_LENGTH, "El correo no puede superar 255 caracteres."),
   );
 
