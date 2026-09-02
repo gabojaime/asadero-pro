@@ -250,3 +250,20 @@ RETURNS uuid
 ```
 
 Callable by authenticated users without a `public.users` row. Creates one `merchants` row and one `users` row bound to `auth.uid()`.
+
+## Staff user RPC
+
+Admin-only path for adding staff to an existing merchant (see `specs/multi-tenant-auth/`):
+
+```sql
+CREATE OR REPLACE FUNCTION public.create_staff_user_profile(
+  p_user_id uuid,
+  p_email text,
+  p_full_name text,
+  p_role user_role
+)
+RETURNS uuid
+-- SECURITY DEFINER; SET search_path = public; GRANT EXECUTE TO authenticated only
+```
+
+Callable only by an authenticated user with `role = 'admin'`. Resolves `merchant_id` from the caller's `public.users` row (never from client params). Requires an existing `auth.users` row for `p_user_id` and rejects duplicate `public.users` profiles. Used after the server creates the auth user via the service role; the RPC binds the profile to the admin's tenant.

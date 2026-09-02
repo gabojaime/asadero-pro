@@ -408,6 +408,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_staff_user_profile: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_user_merchant_id: { Args: never; Returns: string }
     }
     Enums: {
