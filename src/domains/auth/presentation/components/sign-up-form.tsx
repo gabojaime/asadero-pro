@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/shared/infrastructure/supabase/client";
+import { AsaderoLogo } from "@/shared/presentation/asadero-logo";
 import { Button } from "@/shared/presentation/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/presentation/ui/card";
 import { Input } from "@/shared/presentation/ui/input";
@@ -37,7 +38,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="border-border/80 bg-card/95 shadow-xl shadow-primary/5">
         <CardHeader className="gap-4 p-7 pb-5">
-          <div className="flex items-center gap-3 text-primary"><span className="grid size-10 place-items-center bg-primary font-serif text-lg font-bold text-primary-foreground">A</span><span className="font-mono text-xs font-semibold uppercase tracking-[0.24em]">Asadero Pro</span></div>
+          <div className="flex items-center gap-3 text-primary"><AsaderoLogo /><span className="font-mono text-xs font-semibold uppercase tracking-[0.24em]">Asadero Pro</span></div>
           <div className="flex flex-col gap-2"><CardTitle className="font-mono text-3xl tracking-tight">Entra en la cocina.</CardTitle><CardDescription>Crea tu acceso para ordenar la operación con precisión.</CardDescription></div>
         </CardHeader>
         <CardContent className="p-7 pt-0">
