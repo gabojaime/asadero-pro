@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useSessionProfile } from "@/domains/auth/infrastructure/query-adapters";
+import { useBootstrapSessionProfile } from "@/domains/auth/infrastructure/query-adapters";
+import { getDefaultLandingRoute } from "@/domains/auth/domain/rbac";
 import {
   AlreadyOnboardedError,
   NotAuthenticatedError,
@@ -30,7 +31,7 @@ export function OnboardingForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const router = useRouter();
-  const { data: sessionProfile } = useSessionProfile();
+  const { data: sessionProfile } = useBootstrapSessionProfile();
   const userId = sessionProfile?.queryUserId;
   const completeOnboarding = useCompleteOnboarding(userId);
 
@@ -53,7 +54,7 @@ export function OnboardingForm({
         address,
         phone,
       });
-      router.push("/dashboard");
+      router.push(getDefaultLandingRoute("admin"));
       router.refresh();
     } catch (error) {
       if (error instanceof OnboardingValidationError) {
@@ -62,7 +63,7 @@ export function OnboardingForm({
       }
 
       if (error instanceof AlreadyOnboardedError) {
-        router.push("/dashboard");
+        router.push(getDefaultLandingRoute("admin"));
         router.refresh();
         return;
       }
