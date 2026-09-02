@@ -29,6 +29,16 @@
       "spec": "specs/merchant-onboarding/",
       "spec_path": "specs/merchant-onboarding/",
       "progress_path": "progress/merchant-onboarding.md"
+    },
+    {
+      "id": "multi-tenant-auth",
+      "title": "Multi-Tenant Authentication & Session Safeguards",
+      "status": "done",
+      "verification": "manual",
+      "notes": "Done 2026-09-02. Reviewer pass_with_notes after fix-pass. Vitest 34/34. Human smoke passed 2026-09-02 (login, RBAC, create-staff, sidebar). Feature closed for now. Two-merchant RLS (AC-22) remains deferred without a second merchant fixture.",
+      "spec": "specs/multi-tenant-auth/",
+      "spec_path": "specs/multi-tenant-auth/",
+      "progress_path": "progress/multi-tenant-auth.md"
     }
   ]
 }
