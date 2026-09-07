@@ -39,6 +39,16 @@
       "spec": "specs/multi-tenant-auth/",
       "spec_path": "specs/multi-tenant-auth/",
       "progress_path": "progress/multi-tenant-auth.md"
+    },
+    {
+      "id": "raw-materials-inventory",
+      "title": "Raw Materials Inventory Management (Insumos CRUD)",
+      "status": "done",
+      "verification": "automated",
+      "notes": "Done 2026-09-03. Reviewer pass_with_notes. Vitest 70/70, tsc pass. OQ-1 fractional unit; OQ-7 local seed of 18 items. Manual UI/RLS/seed QA deferred until Docker/Supabase local (T17, T25–T26, AC-1–4, 8–14, 19). Regen types after db reset.",
+      "spec": "specs/raw-materials-inventory/",
+      "spec_path": "specs/raw-materials-inventory/",
+      "progress_path": "progress/raw-materials-inventory.md"
     }
   ]
 }
