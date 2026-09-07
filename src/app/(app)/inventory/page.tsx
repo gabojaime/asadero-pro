@@ -1,8 +1,5 @@
+import { InventoryView } from "@/domains/raw-materials/presentation/InventoryView";
+
 export default function InventoryPage() {
-  return (
-    <div>
-      <h1>Inventory</h1>
-      <p>Coming soon.</p>
-    </div>
-  );
+  return <InventoryView />;
 }
