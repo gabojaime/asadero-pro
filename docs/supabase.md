@@ -37,6 +37,23 @@ Apply locally:
 pnpm dlx supabase db reset
 ```
 
+## Local dev seed (raw materials catalog)
+
+The 18 floor insumos are **local/dev only** — not inserted by production migrations or `create_merchant_and_admin_profile`.
+
+Files:
+
+- `supabase/seeds/dev_raw_materials.sql` — idempotent INSERT per merchant
+- `supabase/seed.sql` — includes `./seeds/dev_raw_materials.sql` via `[db.seed]` in `config.toml`
+
+**QA workflow:**
+
+1. `pnpm dlx supabase db reset` (migrations + seed; seed is a no-op if no `merchants` row yet)
+2. Complete merchant onboarding in the app (creates `merchants` + admin `users`)
+3. Re-run seed: `pnpm dlx supabase db seed` — attaches 18 items to existing merchant(s)
+
+Production onboarding must **not** auto-insert this catalog unless a future spec adds a template feature.
+
 ## Generated types
 
 After migrations apply:
