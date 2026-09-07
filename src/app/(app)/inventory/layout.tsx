@@ -6,7 +6,7 @@ export default function InventoryLayout({
   children: React.ReactNode;
 }) {
   return (
-    <RoleRouteGate route="/inventory" allowedRoles={["admin", "grill_master"]}>
+    <RoleRouteGate route="/inventory" allowedRoles={["admin"]}>
       {children}
     </RoleRouteGate>
   );

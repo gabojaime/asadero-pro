@@ -34,7 +34,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
   },
   grill_master: {
     "/dashboard": false,
-    "/inventory": true,
+    "/inventory": false,
     "/orders": true,
     "/waste": true,
     "/kitchen": true,

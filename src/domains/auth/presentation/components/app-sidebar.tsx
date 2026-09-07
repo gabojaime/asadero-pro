@@ -57,7 +57,6 @@ const ADMIN_NAV_ORDER: NavAppRoute[] = [
 
 const GRILL_MASTER_NAV_ORDER: NavAppRoute[] = [
   "/kitchen",
-  "/inventory",
   "/orders",
   "/waste",
 ];
