@@ -34,6 +34,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      inventory_movements: {
+        Row: {
+          created_at: string
+          id: string
+          merchant_id: string
+          movement_type: string
+          quantity: number
+          raw_material_id: string
+          recorded_by: string | null
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          merchant_id: string
+          movement_type?: string
+          quantity: number
+          raw_material_id: string
+          recorded_by?: string | null
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          merchant_id?: string
+          movement_type?: string
+          quantity?: number
+          raw_material_id?: string
+          recorded_by?: string | null
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           created_at: string
@@ -189,30 +244,36 @@ export type Database = {
       raw_materials_inventory: {
         Row: {
           id: string
+          is_active: boolean
           last_updated: string
           merchant_id: string
           name: string
+          quantity_on_hand: number
           sku: string | null
-          stock_kg: number
           unit_cost: number
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
         }
         Insert: {
           id?: string
+          is_active?: boolean
           last_updated?: string
           merchant_id: string
           name: string
+          quantity_on_hand?: number
           sku?: string | null
-          stock_kg?: number
           unit_cost?: number
+          unit_of_measure: Database["public"]["Enums"]["unit_of_measure"]
         }
         Update: {
           id?: string
+          is_active?: boolean
           last_updated?: string
           merchant_id?: string
           name?: string
+          quantity_on_hand?: number
           sku?: string | null
-          stock_kg?: number
           unit_cost?: number
+          unit_of_measure?: Database["public"]["Enums"]["unit_of_measure"]
         }
         Relationships: [
           {
@@ -399,6 +460,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_inventory_receipt: {
+        Args: {
+          p_movement_quantity: number
+          p_movement_unit_cost: number
+          p_quantity_on_hand: number
+          p_raw_material_id: string
+          p_unit_cost: number
+        }
+        Returns: undefined
+      }
       create_merchant_and_admin_profile: {
         Args: {
           p_address?: string
@@ -418,10 +489,12 @@ export type Database = {
         Returns: string
       }
       get_user_merchant_id: { Args: never; Returns: string }
+      get_user_role: { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
     }
     Enums: {
       order_status: "pending" | "cooking" | "served" | "completed" | "cancelled"
       service_type: "dine_in" | "take_out" | "delivery"
+      unit_of_measure: "kilogram" | "unit"
       user_role: "admin" | "grill_master" | "waiter"
       waste_reason:
         | "burned_on_grill"
@@ -560,6 +633,7 @@ export const Constants = {
     Enums: {
       order_status: ["pending", "cooking", "served", "completed", "cancelled"],
       service_type: ["dine_in", "take_out", "delivery"],
+      unit_of_measure: ["kilogram", "unit"],
       user_role: ["admin", "grill_master", "waiter"],
       waste_reason: [
         "burned_on_grill",
