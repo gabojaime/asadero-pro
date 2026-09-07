@@ -22,6 +22,7 @@ COMMENT ON TABLE merchants IS 'BBQ business instances for multi-tenant isolation
 `address` and `phone` are optional contact fields (nullable). Onboarding persists NULL when omitted or blank.
 
 CREATE TYPE user_role AS ENUM ('admin', 'grill_master', 'waiter');
+CREATE TYPE unit_of_measure AS ENUM ('kilogram', 'unit');
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -39,12 +40,32 @@ CREATE TABLE raw_materials_inventory (
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     sku VARCHAR(50),
-    stock_kg DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    unit_of_measure unit_of_measure NOT NULL,
+    quantity_on_hand DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
     unit_cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT raw_materials_quantity_non_negative CHECK (quantity_on_hand >= 0)
 );
 
-COMMENT ON TABLE raw_materials_inventory IS 'Stock of raw meat and supplies tracked in kilograms.';
+COMMENT ON TABLE raw_materials_inventory IS 'Raw supplies catalog and on-hand stock; kilogram or unit count per item.';
+
+CREATE UNIQUE INDEX idx_raw_materials_merchant_name_active
+  ON raw_materials_inventory (merchant_id, lower(trim(name)))
+  WHERE is_active = true;
+
+CREATE TABLE inventory_movements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    raw_material_id UUID NOT NULL REFERENCES raw_materials_inventory(id) ON DELETE CASCADE,
+    movement_type TEXT NOT NULL CHECK (movement_type = 'receipt'),
+    quantity DECIMAL(10, 3) NOT NULL CHECK (quantity > 0),
+    unit_cost DECIMAL(10, 2) NOT NULL CHECK (unit_cost >= 0),
+    recorded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE inventory_movements IS 'Audit log of inventory inward receipts; outbound types added in future specs.';
 
 CREATE TABLE menu_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -132,6 +153,7 @@ COMMENT ON TABLE table_sessions_log IS 'Logs completed table sessions to feed oc
 ```sql
 CREATE INDEX idx_users_merchant ON users(merchant_id);
 CREATE INDEX idx_inventory_merchant ON raw_materials_inventory(merchant_id);
+CREATE INDEX idx_inventory_movements_lookup ON inventory_movements(merchant_id, raw_material_id, created_at DESC);
 CREATE INDEX idx_menu_items_merchant ON menu_items(merchant_id);
 CREATE INDEX idx_orders_merchant ON orders(merchant_id);
 CREATE INDEX idx_waste_merchant ON waste_logs(merchant_id);
@@ -151,6 +173,7 @@ Enable RLS on all operational tables. Tenant isolation uses `get_user_merchant_i
 ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE raw_materials_inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -161,7 +184,12 @@ ALTER TABLE table_sessions_log ENABLE ROW LEVEL SECURITY;
 CREATE OR REPLACE FUNCTION get_user_merchant_id()
 RETURNS UUID AS $$
     SELECT merchant_id FROM users WHERE id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
+
+CREATE OR REPLACE FUNCTION get_user_role()
+RETURNS user_role AS $$
+    SELECT role FROM users WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
 CREATE POLICY "Users can read their merchant"
 ON merchants FOR SELECT TO authenticated
@@ -175,10 +203,41 @@ CREATE POLICY "Users can only read inventory of their merchant"
 ON raw_materials_inventory FOR SELECT TO authenticated
 USING (merchant_id = get_user_merchant_id());
 
-CREATE POLICY "Admins and Grill Masters can modify inventory"
-ON raw_materials_inventory FOR ALL TO authenticated
-USING (merchant_id = get_user_merchant_id())
-WITH CHECK (merchant_id = get_user_merchant_id());
+CREATE POLICY "Admins can insert inventory for their merchant"
+ON raw_materials_inventory FOR INSERT TO authenticated
+WITH CHECK (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() = 'admin'
+);
+
+CREATE POLICY "Admins can update inventory for their merchant"
+ON raw_materials_inventory FOR UPDATE TO authenticated
+USING (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() = 'admin'
+)
+WITH CHECK (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() = 'admin'
+);
+
+CREATE POLICY "Admins can delete inventory for their merchant"
+ON raw_materials_inventory FOR DELETE TO authenticated
+USING (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() = 'admin'
+);
+
+CREATE POLICY "Users can read inventory movements of their merchant"
+ON inventory_movements FOR SELECT TO authenticated
+USING (merchant_id = get_user_merchant_id());
+
+CREATE POLICY "Admins can insert inventory movements for their merchant"
+ON inventory_movements FOR INSERT TO authenticated
+WITH CHECK (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() = 'admin'
+);
 
 CREATE POLICY "Users can read menu items of their merchant"
 ON menu_items FOR SELECT TO authenticated
@@ -225,10 +284,12 @@ Role-specific mutation rules (who may write inventory vs waste vs orders) must b
 
 | Table column | Domain field |
 |--------------|--------------|
-| `stock_kg` | `stockKg` |
+| `quantity_on_hand` | `quantityOnHand` |
+| `unit_of_measure` | `unitOfMeasure` |
 | `unit_cost` | `unitCost` |
+| `is_active` | `isActive` |
 | `merchant_id` | `merchantId` |
-| `last_updated` | `updatedAt` (or `lastUpdated` — pick one per entity and keep it) |
+| `last_updated` | `updatedAt` |
 | `weight_kg` | `weightKg` |
 | `quantity_kg` | `quantityKg` |
 
