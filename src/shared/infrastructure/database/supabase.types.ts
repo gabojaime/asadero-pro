@@ -94,25 +94,34 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          item_kind: Database["public"]["Enums"]["menu_item_kind"]
           merchant_id: string
           name: string
           price: number
+          protein_group: string | null
+          weight_label: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean
+          item_kind?: Database["public"]["Enums"]["menu_item_kind"]
           merchant_id: string
           name: string
           price: number
+          protein_group?: string | null
+          weight_label?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean
+          item_kind?: Database["public"]["Enums"]["menu_item_kind"]
           merchant_id?: string
           name?: string
           price?: number
+          protein_group?: string | null
+          weight_label?: string | null
         }
         Relationships: [
           {
@@ -147,6 +156,42 @@ export type Database = {
           phone?: string | null
         }
         Relationships: []
+      }
+      order_item_sides: {
+        Row: {
+          id: string
+          order_item_id: string
+          side_menu_item_id: string
+          slot: number
+        }
+        Insert: {
+          id?: string
+          order_item_id: string
+          side_menu_item_id: string
+          slot: number
+        }
+        Update: {
+          id?: string
+          order_item_id?: string
+          side_menu_item_id?: string
+          slot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_sides_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_sides_side_menu_item_id_fkey"
+            columns: ["side_menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -193,8 +238,12 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          delivery_fee: number
+          delivery_zone: string | null
           id: string
           merchant_id: string
+          ready_at: string | null
+          sent_to_kitchen_at: string | null
           server_id: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           status: Database["public"]["Enums"]["order_status"]
@@ -204,8 +253,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           merchant_id: string
+          ready_at?: string | null
+          sent_to_kitchen_at?: string | null
           server_id?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["order_status"]
@@ -215,8 +268,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           merchant_id?: string
+          ready_at?: string | null
+          sent_to_kitchen_at?: string | null
           server_id?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["order_status"]
@@ -470,6 +527,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_order_with_items: {
+        Args: {
+          p_delivery_fee: number
+          p_delivery_zone: string | null
+          p_lines: Json
+          p_service_type: Database["public"]["Enums"]["service_type"]
+          p_total_amount: number
+        }
+        Returns: string
+      }
       create_merchant_and_admin_profile: {
         Args: {
           p_address?: string
@@ -492,6 +559,7 @@ export type Database = {
       get_user_role: { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
     }
     Enums: {
+      menu_item_kind: "meat_plate" | "drink" | "side"
       order_status: "pending" | "cooking" | "served" | "completed" | "cancelled"
       service_type: "dine_in" | "take_out" | "delivery"
       unit_of_measure: "kilogram" | "unit"
