@@ -5,7 +5,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:seed": "pnpm dlx supabase db query --local -f supabase/seeds/dev_raw_materials.sql && pnpm dlx supabase db query --local -f supabase/seeds/order_menu_catalog.sql"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.11",

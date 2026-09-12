@@ -143,7 +143,7 @@
 - [ ] T26 / AC-14: cross-tenant SELECT blocked
 - [ ] T1 apply: `pnpm dlx supabase db reset`
 - [ ] T2 regen: `pnpm dlx supabase gen types typescript --local > src/shared/infrastructure/database/supabase.types.ts`
-- [ ] AC-19: after onboard + `db seed`, 18 floor items exist per merchant
+- [ ] AC-19: after onboard + `pnpm db:seed`, 18 floor items exist per merchant
 
 ### Acceptance criteria — automated slice
 | ID | Status |
@@ -208,7 +208,7 @@
 
 **Rationale:** CHECKPOINTS allow `pass_with_notes` plus manual ACs explicitly deferred (Docker/Supabase local). Automated slice (WAC, UoM fractions, receiveStock, RBAC) is green.
 
-**Follow-up when Docker is up:** `pnpm dlx supabase db reset`, regen types, onboard + `db seed` (AC-19), UI smoke AC-1–4/8–12, RLS L4 AC-13–14.
+**Follow-up when Docker is up:** `pnpm dlx supabase db reset`, regen types, onboard + `pnpm db:seed` (AC-19; see `docs/supabase.md`), UI smoke AC-1–4/8–12, RLS L4 AC-13–14.
 
 ## 2026-09-07 17:10 — implementer
 
