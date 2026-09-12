@@ -78,6 +78,39 @@ CREATE TABLE menu_items (
 
 COMMENT ON TABLE menu_items IS 'Plates and items available for customers to order.';
 
+**Order kitchen queue extensions** (`20260912160000_order_kitchen_queue.sql`):
+
+```sql
+CREATE TYPE menu_item_kind AS ENUM ('meat_plate', 'drink', 'side');
+
+ALTER TABLE menu_items
+  ADD COLUMN item_kind menu_item_kind NOT NULL DEFAULT 'meat_plate',
+  ADD COLUMN protein_group TEXT NULL CHECK (protein_group IN ('beef', 'pork', 'chicken')),
+  ADD COLUMN weight_label TEXT NULL;
+
+CREATE TABLE order_item_sides (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_item_id UUID NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+  side_menu_item_id UUID NOT NULL REFERENCES menu_items(id),
+  slot SMALLINT NOT NULL CHECK (slot IN (1, 2)),
+  UNIQUE (order_item_id, slot)
+);
+
+ALTER TABLE orders
+  ADD COLUMN sent_to_kitchen_at TIMESTAMPTZ,
+  ADD COLUMN ready_at TIMESTAMPTZ,
+  ADD COLUMN delivery_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN delivery_zone TEXT NULL,
+  ADD CONSTRAINT orders_delivery_fee_non_negative CHECK (delivery_fee >= 0);
+```
+
+`orders` is published to `supabase_realtime`. Order RLS is role-aware: waiters/admins INSERT; grillmasters/admins UPDATE status.
+
+**Review fixes** (`20260912170000_order_kitchen_review_fixes.sql`):
+
+- `create_order_with_items(...)` RPC — atomic insert of order + items + sides in one transaction
+- `orders_enforce_kitchen_update_columns` trigger — grill_master/admin UPDATE limited to `status`, `ready_at`, `updated_at`
+
 CREATE TABLE recipe_ingredients (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,

@@ -37,22 +37,40 @@ Apply locally:
 pnpm dlx supabase db reset
 ```
 
-## Local dev seed (raw materials catalog)
+## Local dev seed (catalog data)
 
-The 18 floor insumos are **local/dev only** — not inserted by production migrations or `create_merchant_and_admin_profile`.
+Raw materials (18 floor insumos) and the example asadero menu catalog are **local/dev only** — not inserted by production migrations or `create_merchant_and_admin_profile`.
 
 Files:
 
-- `supabase/seeds/dev_raw_materials.sql` — idempotent INSERT per merchant
-- `supabase/seed.sql` — includes `./seeds/dev_raw_materials.sql` via `[db.seed]` in `config.toml`
+- `supabase/seeds/dev_raw_materials.sql` — idempotent INSERT per merchant into `raw_materials_inventory`
+- `supabase/seeds/order_menu_catalog.sql` — idempotent `CROSS JOIN merchants` INSERT into `menu_items`
+- `[db.seed].sql_paths` in `supabase/config.toml` — ordered list applied **only during** `db reset` (no psql `\i`; CLI batch sender does not support meta-commands)
+
+There is **no** `supabase db seed` subcommand (Supabase CLI 2.x). Seeds from `config.toml` run automatically after migrations when you `db reset`. To re-apply catalog data **after** merchants exist (without wiping the DB), use `db query`:
+
+```bash
+pnpm dlx supabase db query --local -f supabase/seeds/dev_raw_materials.sql
+pnpm dlx supabase db query --local -f supabase/seeds/order_menu_catalog.sql
+```
+
+Or run both via the package script:
+
+```bash
+pnpm db:seed
+```
+
+Both SQL files are idempotent — safe to re-run; they attach rows to every existing `merchants` row.
 
 **QA workflow:**
 
 1. `pnpm dlx supabase db reset` (migrations + seed; seed is a no-op if no `merchants` row yet)
 2. Complete merchant onboarding in the app (creates `merchants` + admin `users`)
-3. Re-run seed: `pnpm dlx supabase db seed` — attaches 18 items to existing merchant(s)
+3. Re-apply catalog seeds (step 1 wipes data, so skip if you just reset): `pnpm db:seed` or the two `db query` commands above
 
 Production onboarding must **not** auto-insert this catalog unless a future spec adds a template feature.
+
+`orders` is added to the `supabase_realtime` publication in migration `20260912160000_order_kitchen_queue.sql` for kitchen queue updates.
 
 ## Generated types
 

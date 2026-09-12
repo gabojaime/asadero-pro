@@ -49,6 +49,16 @@
       "spec": "specs/raw-materials-inventory/",
       "spec_path": "specs/raw-materials-inventory/",
       "progress_path": "progress/raw-materials-inventory.md"
+    },
+    {
+      "id": "order-kitchen-queue",
+      "title": "Order Registration & Kitchen Queue (Waiter Cart + Comandas)",
+      "status": "done",
+      "verification": "automated",
+      "notes": "Approved 2026-09-12 (reviewer pass_with_notes) on feat/order-kitchen-queue. T41–T44 live Realtime/RLS/RBAC remain optional human follow-up.",
+      "spec": "specs/order-kitchen-queue/",
+      "spec_path": "specs/order-kitchen-queue/",
+      "progress_path": "progress/order-kitchen-queue.md"
     }
   ]
 }
