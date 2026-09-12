@@ -1,4 +1,7 @@
 {
     "editor.formatOnSave": true,
-    "cSpell.language": "en,es-ES"
+    "cSpell.language": "en,es-ES",
+    "cSpell.words": [
+        "Toallin"
+    ]
 }
