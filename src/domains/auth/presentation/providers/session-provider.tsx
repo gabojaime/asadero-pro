@@ -1,21 +1,12 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
-import type { SessionProfile, UserRole } from "@/domains/auth/domain/entities";
+import type { ReactNode } from "react";
+import type { SessionProfile } from "@/domains/auth/domain/entities";
 import { useSessionProfile } from "@/domains/auth/infrastructure/query-adapters";
-
-export type SessionContextValue = {
-  userId: string;
-  email: string;
-  merchantId: string;
-  merchantName: string | null;
-  fullName: string | null;
-  role: UserRole;
-  isLoading: boolean;
-  isError: boolean;
-};
-
-const SessionContext = createContext<SessionContextValue | null>(null);
+import {
+  SessionContext,
+  type SessionContextValue,
+} from "./session-context";
 
 type SessionProviderProps = {
   initialProfile: SessionProfile;
@@ -53,12 +44,5 @@ export function SessionProvider({
   );
 }
 
-export function useSession(): SessionContextValue {
-  const context = useContext(SessionContext);
-
-  if (!context) {
-    throw new Error("useSession must be used within SessionProvider");
-  }
-
-  return context;
-}
+export { useSession, TestSessionProvider } from "./session-context";
+export type { SessionContextValue } from "./session-context";
