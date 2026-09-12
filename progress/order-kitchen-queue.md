@@ -194,3 +194,18 @@ Reviewer approved (`pass_with_notes`); status `done`; branch `feat/order-kitchen
 **Verification:** `pnpm db:seed` — pass (`INSERT 0 18` / `INSERT 0 14` first run; `INSERT 0 0` on idempotent re-run)
 
 **Notes:** Approved specs still mention `db seed` historically; `docs/supabase.md` is canonical.
+
+## 2026-09-12 16:45 — implementer (smoke fixes)
+
+**Task:** Waiter delivery zone spaces + money fee input UX
+
+**Changes:**
+- `OrderRegistryView.tsx` — zone no longer trimmed on every keystroke; trim on blur/submit only
+- `DeliveryDetailsFields.tsx` — `maxLength` 100, zone blur hook, `MoneyAmountInput` for fee
+- `MoneyAmountInput.tsx` + `format-money.ts` — es-ES USD text input (parse on change, format on blur)
+- `format-money.test.ts` — unit tests for parse/format helpers
+- `order-kitchen-flow.integration.test.tsx` — delivery scenario uses `"Las Mercedes"` and `"4,5"`
+
+**Verification:** `pnpm test src/domains/orders` — 43/43 pass
+
+**Notes:** Fee field starts empty (not `0`); typing `37` works without leading-zero stickiness; blur shows `37,00 US$`.

@@ -111,18 +111,32 @@ export function OrderRegistryView() {
     setSelectedMeat(null);
   };
 
+  const normalizeCartForSubmit = (current: Cart): Cart => {
+    if (current.serviceType !== "delivery") {
+      return current;
+    }
+
+    const trimmedZone = current.deliveryZone?.trim() ?? null;
+    return {
+      ...current,
+      deliveryZone: trimmedZone ? trimmedZone : null,
+    };
+  };
+
   const handleSubmit = async () => {
     setSubmitError(null);
     setFeeError(null);
     setStatusMessage(null);
 
-    if (cart.serviceType === "delivery" && cart.deliveryFee < 0) {
+    const cartToSubmit = normalizeCartForSubmit(cart);
+
+    if (cartToSubmit.serviceType === "delivery" && cartToSubmit.deliveryFee < 0) {
       setFeeError(ORDER_COPY.deliveryFeeRequired);
       return;
     }
 
     try {
-      await submitMutation.mutateAsync(cart);
+      await submitMutation.mutateAsync(cartToSubmit);
       setCart(createEmptyCart());
       setStatusMessage(ORDER_COPY.submitSuccess);
     } catch (error) {
@@ -171,8 +185,14 @@ export function OrderRegistryView() {
             feeError={feeError}
             onZoneChange={(value) =>
               setCart((current) =>
-                setDeliveryZone(current, value.trim() ? value.trim() : null),
+                setDeliveryZone(current, value === "" ? null : value),
               )
+            }
+            onZoneBlur={() =>
+              setCart((current) => {
+                const trimmed = current.deliveryZone?.trim() ?? "";
+                return setDeliveryZone(current, trimmed ? trimmed : null);
+              })
             }
             onFeeChange={(value) =>
               setCart((current) => setDeliveryFee(current, value))

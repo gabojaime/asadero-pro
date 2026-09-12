@@ -130,9 +130,14 @@ describe("order-kitchen-flow integration", () => {
     await userEvent.click(
       screen.getByRole("button", { name: ORDER_COPY.serviceDelivery }),
     );
-    await userEvent.type(screen.getByLabelText(ORDER_COPY.deliveryZoneLabel), "Centro");
-    await userEvent.clear(screen.getByLabelText(ORDER_COPY.deliveryFeeLabel));
-    await userEvent.type(screen.getByLabelText(ORDER_COPY.deliveryFeeLabel), "4.5");
+    await userEvent.type(
+      screen.getByLabelText(ORDER_COPY.deliveryZoneLabel),
+      "Las Mercedes",
+    );
+    const feeInput = screen.getByLabelText(ORDER_COPY.deliveryFeeLabel);
+    await userEvent.click(feeInput);
+    await userEvent.type(feeInput, "4,5");
+    await userEvent.tab();
     await addBeefHalfKgWithSides();
 
     expectUsdAmount(28.5);
@@ -145,7 +150,7 @@ describe("order-kitchen-flow integration", () => {
 
     const snapshot = repos.getOrdersSnapshot()[0]!;
     expect(snapshot.serviceType).toBe("delivery");
-    expect(snapshot.deliveryZone).toBe("Centro");
+    expect(snapshot.deliveryZone).toBe("Las Mercedes");
     expect(snapshot.deliveryFee).toBe(4.5);
     expect(snapshot.totalAmount).toBe(28.5);
 
@@ -157,7 +162,7 @@ describe("order-kitchen-flow integration", () => {
     });
 
     expect(await screen.findByText(ORDER_COPY.serviceDelivery)).toBeInTheDocument();
-    expect(screen.getByText("Centro")).toBeInTheDocument();
+    expect(screen.getByText("Las Mercedes")).toBeInTheDocument();
     expectUsdAmount(4.5);
   });
 
