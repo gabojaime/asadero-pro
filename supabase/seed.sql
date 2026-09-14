@@ -1,3 +1,3 @@
 -- Local/dev seeds are loaded via [db.seed].sql_paths in supabase/config.toml.
 -- Supabase CLI does not support psql meta-commands (\i, \echo, etc.) during db reset.
--- See supabase/seeds/dev_raw_materials.sql and supabase/seeds/order_menu_catalog.sql.
+-- See supabase/seeds/dev_raw_materials.sql, order_menu_catalog.sql, and waste_cost_calculator.sql.

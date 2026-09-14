@@ -106,6 +106,35 @@ ALTER TABLE orders
 
 `orders` is published to `supabase_realtime`. Order RLS is role-aware: waiters/admins INSERT; grillmasters/admins UPDATE status.
 
+**Waste cost calculator extensions** (`20260912180000_waste_cost_calculator.sql`):
+
+```sql
+ALTER TABLE merchants
+  ADD COLUMN target_food_cost_pct DECIMAL(5, 4) NOT NULL DEFAULT 0.3300;
+
+CREATE TABLE menu_item_costing (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+  menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  waste_pct DECIMAL(5, 2) NULL CHECK (waste_pct >= 0 AND waste_pct < 100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (menu_item_id)
+);
+
+ALTER TABLE orders
+  ADD COLUMN inventory_deducted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE inventory_movements
+  ADD COLUMN order_id UUID NULL REFERENCES orders(id) ON DELETE SET NULL,
+  ADD COLUMN metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- movement_type: receipt | order_deduction
+-- RPC: complete_order_and_deduct_inventory(order_id)
+```
+
+Admin-only RLS on `menu_item_costing`; `recipe_ingredients` writes admin-only (tenant read for all roles). Order completion deduction uses SECURITY DEFINER RPC (waiter/admin).
+
 **Review fixes** (`20260912170000_order_kitchen_review_fixes.sql`):
 
 - `create_order_with_items(...)` RPC — atomic insert of order + items + sides in one transaction

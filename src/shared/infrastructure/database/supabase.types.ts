@@ -39,7 +39,9 @@ export type Database = {
           created_at: string
           id: string
           merchant_id: string
+          metadata: Json
           movement_type: string
+          order_id: string | null
           quantity: number
           raw_material_id: string
           recorded_by: string | null
@@ -49,7 +51,9 @@ export type Database = {
           created_at?: string
           id?: string
           merchant_id: string
+          metadata?: Json
           movement_type?: string
+          order_id?: string | null
           quantity: number
           raw_material_id: string
           recorded_by?: string | null
@@ -59,7 +63,9 @@ export type Database = {
           created_at?: string
           id?: string
           merchant_id?: string
+          metadata?: Json
           movement_type?: string
+          order_id?: string | null
           quantity?: number
           raw_material_id?: string
           recorded_by?: string | null
@@ -74,6 +80,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_movements_raw_material_id_fkey"
             columns: ["raw_material_id"]
             isOneToOne: false
@@ -85,6 +98,48 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_costing: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          merchant_id: string
+          updated_at: string
+          waste_pct: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          merchant_id: string
+          updated_at?: string
+          waste_pct?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          merchant_id?: string
+          updated_at?: string
+          waste_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_costing_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: true
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_costing_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
         ]
@@ -140,6 +195,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          target_food_cost_pct: number
         }
         Insert: {
           address?: string | null
@@ -147,6 +203,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          target_food_cost_pct?: number
         }
         Update: {
           address?: string | null
@@ -154,6 +211,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          target_food_cost_pct?: number
         }
         Relationships: []
       }
@@ -241,6 +299,7 @@ export type Database = {
           delivery_fee: number
           delivery_zone: string | null
           id: string
+          inventory_deducted_at: string | null
           merchant_id: string
           ready_at: string | null
           sent_to_kitchen_at: string | null
@@ -256,6 +315,7 @@ export type Database = {
           delivery_fee?: number
           delivery_zone?: string | null
           id?: string
+          inventory_deducted_at?: string | null
           merchant_id: string
           ready_at?: string | null
           sent_to_kitchen_at?: string | null
@@ -271,6 +331,7 @@ export type Database = {
           delivery_fee?: number
           delivery_zone?: string | null
           id?: string
+          inventory_deducted_at?: string | null
           merchant_id?: string
           ready_at?: string | null
           sent_to_kitchen_at?: string | null
@@ -526,6 +587,12 @@ export type Database = {
           p_unit_cost: number
         }
         Returns: undefined
+      }
+      complete_order_and_deduct_inventory: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
       }
       create_order_with_items: {
         Args: {
