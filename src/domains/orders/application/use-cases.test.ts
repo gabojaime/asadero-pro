@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
 import { createEmptyCart, type Cart, type MenuItem, type Order } from "../domain/entities";
 import { OrderError } from "../domain/errors";
+import type { InventoryDeductionRepository } from "@/domains/waste/domain/repository";
 import type { MenuCatalogRepository, OrderRepository } from "../domain/repository";
 import {
+  completeOrder,
   listActiveOrders,
   markOrderReady,
   submitOrder,
@@ -108,16 +110,33 @@ function createCatalogRepo(
   };
 }
 
+const servedOrder: Order = {
+  ...insertedOrder,
+  status: "served",
+  readyAt: new Date("2026-09-12T10:30:00Z"),
+};
+
 function createOrderRepo(
   overrides: Partial<OrderRepository> = {},
 ): OrderRepository {
   return {
     insertOrder: vi.fn().mockResolvedValue(insertedOrder),
     listActiveOrders: vi.fn().mockResolvedValue([insertedOrder]),
-    markReady: vi.fn().mockResolvedValue({
-      ...insertedOrder,
-      status: "served",
-      readyAt: new Date("2026-09-12T10:30:00Z"),
+    listServedOrders: vi.fn().mockResolvedValue([servedOrder]),
+    getOrderById: vi.fn().mockResolvedValue(servedOrder),
+    markReady: vi.fn().mockResolvedValue(servedOrder),
+    ...overrides,
+  };
+}
+
+function createDeductionRepo(
+  overrides: Partial<InventoryDeductionRepository> = {},
+): InventoryDeductionRepository {
+  return {
+    completeOrderAndDeduct: vi.fn().mockResolvedValue({
+      idempotent: false,
+      partialDeduction: false,
+      deductions: [],
     }),
     ...overrides,
   };
@@ -204,5 +223,64 @@ describe("listActiveOrders", () => {
 
     expect(result[0]?.id).toBe(insertedOrder.id);
     expect(result[1]?.id).toBe(later.id);
+  });
+});
+
+describe("completeOrder", () => {
+  it("allows waiter to complete served orders and invoke deduction", async () => {
+    const orderRepo = createOrderRepo({
+      getOrderById: vi
+        .fn()
+        .mockResolvedValueOnce(servedOrder)
+        .mockResolvedValueOnce({ ...servedOrder, status: "completed" }),
+    });
+    const deductionRepo = createDeductionRepo();
+
+    const result = await completeOrder(
+      servedOrder.id,
+      waiterProfile,
+      orderRepo,
+      deductionRepo,
+    );
+
+    expect(deductionRepo.completeOrderAndDeduct).toHaveBeenCalledWith({
+      orderId: servedOrder.id,
+    });
+    expect(result.order.status).toBe("completed");
+  });
+
+  it("rejects grill master completion", async () => {
+    await expect(
+      completeOrder(
+        servedOrder.id,
+        grillMasterProfile,
+        createOrderRepo(),
+        createDeductionRepo(),
+      ),
+    ).rejects.toThrow(OrderError);
+  });
+
+  it("returns idempotent success on second completion call", async () => {
+    const completedOrder = { ...servedOrder, status: "completed" as const };
+    const orderRepo = createOrderRepo({
+      getOrderById: vi.fn().mockResolvedValue(completedOrder),
+    });
+    const deductionRepo = createDeductionRepo({
+      completeOrderAndDeduct: vi.fn().mockResolvedValue({
+        idempotent: true,
+        partialDeduction: false,
+        deductions: [],
+      }),
+    });
+
+    const result = await completeOrder(
+      servedOrder.id,
+      waiterProfile,
+      orderRepo,
+      deductionRepo,
+    );
+
+    expect(result.idempotent).toBe(true);
+    expect(deductionRepo.completeOrderAndDeduct).toHaveBeenCalledTimes(1);
   });
 });

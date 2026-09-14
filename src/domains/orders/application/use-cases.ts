@@ -1,7 +1,9 @@
 import type { SessionProfile } from "@/domains/auth/domain/entities";
+import type { InventoryDeductionRepository } from "@/domains/waste/domain/repository";
 import { computeOrderTotal } from "../domain/cart";
 import type { Cart } from "../domain/entities";
 import { OrderError } from "../domain/errors";
+import { completeOrder as completeOrderDomain } from "../domain/order-completion";
 import {
   assertCanMarkReady,
   sortOrdersChronologically,
@@ -17,6 +19,19 @@ function assertCanSubmitOrder(profile: SessionProfile): void {
     throw new OrderError(
       "forbidden",
       "No tienes permiso para registrar pedidos.",
+    );
+  }
+
+  if (!profile.merchantId) {
+    throw new OrderError("not_authenticated", "Sesión inválida.");
+  }
+}
+
+function assertCanCompleteOrder(profile: SessionProfile): void {
+  if (profile.role !== "waiter" && profile.role !== "admin") {
+    throw new OrderError(
+      "forbidden_complete_order",
+      "No tienes permiso para completar pedidos.",
     );
   }
 
@@ -85,4 +100,50 @@ export async function markOrderReady(
     orderId,
     actorRole: actor.role!,
   });
+}
+
+export async function listServedOrders(
+  merchantId: string,
+  orderRepo: OrderRepository,
+) {
+  const orders = await orderRepo.listServedOrders(merchantId);
+  return sortOrdersChronologically(orders);
+}
+
+export async function completeOrder(
+  orderId: string,
+  actor: SessionProfile,
+  orderRepo: OrderRepository,
+  deductionRepo: InventoryDeductionRepository,
+) {
+  assertCanCompleteOrder(actor);
+
+  const existing = await orderRepo.getOrderById(actor.merchantId!, orderId);
+  if (!existing) {
+    throw new OrderError("not_found", "Pedido no encontrado.");
+  }
+
+  if (existing.status !== "served" && existing.status !== "completed") {
+    throw new OrderError(
+      "order_not_completable",
+      "Solo se pueden completar pedidos en estado servido.",
+    );
+  }
+
+  if (existing.status === "served") {
+    completeOrderDomain(existing, new Date());
+  }
+
+  const result = await deductionRepo.completeOrderAndDeduct({ orderId });
+
+  const refreshed = await orderRepo.getOrderById(actor.merchantId!, orderId);
+  if (!refreshed) {
+    throw new OrderError("not_found", "Pedido no encontrado.");
+  }
+
+  return {
+    order: refreshed,
+    idempotent: result.idempotent,
+    partialDeduction: result.partialDeduction,
+  };
 }

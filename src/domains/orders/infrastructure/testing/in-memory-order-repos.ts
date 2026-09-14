@@ -91,6 +91,22 @@ export function createInMemoryOrderRepos(options?: {
       );
     },
 
+    async listServedOrders(requestedMerchantId) {
+      return orders.filter(
+        (order) =>
+          order.merchantId === requestedMerchantId && order.status === "served",
+      );
+    },
+
+    async getOrderById(requestedMerchantId, orderId) {
+      return (
+        orders.find(
+          (order) =>
+            order.id === orderId && order.merchantId === requestedMerchantId,
+        ) ?? null
+      );
+    },
+
     async markReady(params: MarkOrderReadyParams) {
       assertCanMarkReady(params.actorRole);
 

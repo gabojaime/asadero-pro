@@ -5,7 +5,19 @@ import type { MenuCatalogRepository } from "../domain/repository";
 
 type MenuItemRow = Database["public"]["Tables"]["menu_items"]["Row"];
 
-function mapMenuItemRow(row: MenuItemRow): MenuItem {
+type MenuItemListRow = Pick<
+  MenuItemRow,
+  | "id"
+  | "merchant_id"
+  | "name"
+  | "price"
+  | "item_kind"
+  | "protein_group"
+  | "weight_label"
+  | "is_active"
+>;
+
+function mapMenuItemRow(row: MenuItemListRow): MenuItem {
   return {
     id: row.id,
     merchantId: row.merchant_id,
@@ -25,7 +37,9 @@ export function createMenuCatalogRepository(
     async listActiveMenu(merchantId) {
       const { data, error } = await supabase
         .from("menu_items")
-        .select("*")
+        .select(
+          "id, merchant_id, name, price, item_kind, protein_group, weight_label, is_active",
+        )
         .eq("merchant_id", merchantId)
         .eq("is_active", true)
         .order("name", { ascending: true });

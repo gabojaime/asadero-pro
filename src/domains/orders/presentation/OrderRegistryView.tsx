@@ -21,6 +21,7 @@ import { CartPanel } from "./CartPanel";
 import { DeliveryDetailsFields } from "./DeliveryDetailsFields";
 import { MeatPlateSidePicker } from "./MeatPlateSidePicker";
 import { MenuCatalogPanel } from "./MenuCatalogPanel";
+import { ServedOrdersPanel } from "./ServedOrdersPanel";
 import { ORDER_COPY } from "./copy";
 import { ServiceTypeSelector } from "./ServiceTypeSelector";
 import { Skeleton } from "@/shared/presentation/ui/skeleton";
@@ -257,6 +258,8 @@ export function OrderRegistryView() {
         onClose={() => setSelectedMeat(null)}
         onConfirm={handleConfirmMeat}
       />
+
+      <ServedOrdersPanel />
     </div>
   );
 }

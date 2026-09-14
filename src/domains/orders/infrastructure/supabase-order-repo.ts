@@ -168,6 +168,36 @@ export function createOrderRepository(
       return (data ?? []).map((row) => mapOrderRow(row as OrderWithRelations));
     },
 
+    async listServedOrders(merchantId) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(ACTIVE_ORDER_SELECT)
+        .eq("merchant_id", merchantId)
+        .eq("status", "served")
+        .order("ready_at", { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []).map((row) => mapOrderRow(row as OrderWithRelations));
+    },
+
+    async getOrderById(merchantId, orderId) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(ACTIVE_ORDER_SELECT)
+        .eq("id", orderId)
+        .eq("merchant_id", merchantId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return data ? mapOrderRow(data as OrderWithRelations) : null;
+    },
+
     async markReady(params) {
       assertCanMarkReady(params.actorRole);
 

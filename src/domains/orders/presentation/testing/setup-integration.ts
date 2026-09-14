@@ -1,4 +1,7 @@
 import "@testing-library/jest-dom/vitest";
+import { vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 
 if (typeof HTMLElement !== "undefined") {
   if (!HTMLElement.prototype.hasPointerCapture) {

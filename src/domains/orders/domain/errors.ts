@@ -3,8 +3,10 @@ export type OrderErrorCode =
   | "not_authenticated"
   | "forbidden"
   | "forbidden_mark_ready"
+  | "forbidden_complete_order"
   | "not_found"
   | "order_not_active"
+  | "order_not_completable"
   | "unknown";
 
 export class OrderError extends Error {

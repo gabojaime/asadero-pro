@@ -25,5 +25,7 @@ export interface MarkOrderReadyParams {
 export interface OrderRepository {
   insertOrder(params: InsertOrderParams): Promise<Order>;
   listActiveOrders(merchantId: string): Promise<Order[]>;
+  listServedOrders(merchantId: string): Promise<Order[]>;
+  getOrderById(merchantId: string, orderId: string): Promise<Order | null>;
   markReady(params: MarkOrderReadyParams): Promise<Order>;
 }

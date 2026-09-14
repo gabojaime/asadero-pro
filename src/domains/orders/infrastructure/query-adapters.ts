@@ -14,7 +14,7 @@ import type {
   ActionFailure,
   MenuItemDto,
   OrderDto,
-} from "@/domains/orders/infrastructure/order-actions";
+} from "@/domains/orders/infrastructure/order-dtos";
 import {
   subscribeActiveOrders,
   type KitchenRealtimeStatus,
@@ -28,6 +28,10 @@ export function menuItemsQueryKey(merchantId: string) {
 
 export function activeOrdersQueryKey(merchantId: string) {
   return ["active-orders", merchantId] as const;
+}
+
+export function servedOrdersQueryKey(merchantId: string) {
+  return ["served-orders", merchantId] as const;
 }
 
 function throwActionError(result: ActionFailure): never {
@@ -169,6 +173,9 @@ export function useMarkOrderReady(profile: SessionProfile | null) {
       if (merchantId) {
         queryClient.invalidateQueries({
           queryKey: activeOrdersQueryKey(merchantId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: servedOrdersQueryKey(merchantId),
         });
       }
     },
