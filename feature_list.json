@@ -59,6 +59,16 @@
       "spec": "specs/order-kitchen-queue/",
       "spec_path": "specs/order-kitchen-queue/",
       "progress_path": "progress/order-kitchen-queue.md"
+    },
+    {
+      "id": "waste-cost-calculator",
+      "title": "Automated Cooking Waste (Merma) and Cost Calculator",
+      "status": "review_pending",
+      "verification": "automated",
+      "notes": "Implementation complete 2026-09-12. OQs locked; OQ-8 override includes §5.2 deduction. Hybrid: Vitest 139/139 + tsc/lint; remaining manual UI/RLS/checkout after local db reset. Ready for reviewer.",
+      "spec": "specs/waste-cost-calculator/",
+      "spec_path": "specs/waste-cost-calculator/",
+      "progress_path": "progress/waste-cost-calculator.md"
     }
   ]
 }
