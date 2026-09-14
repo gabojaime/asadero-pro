@@ -6,7 +6,7 @@ export default function WasteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <RoleRouteGate route="/waste" allowedRoles={["admin", "grill_master"]}>
+    <RoleRouteGate route="/waste" allowedRoles={["admin"]}>
       {children}
     </RoleRouteGate>
   );

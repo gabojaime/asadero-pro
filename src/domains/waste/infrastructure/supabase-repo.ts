@@ -1,2 +1,4 @@
-// Placeholder — implement Supabase repositories in a future feature.
-export {};
+export {
+  createCostingRepository,
+  createInventoryDeductionRepository,
+} from "./supabase-costing-repo";

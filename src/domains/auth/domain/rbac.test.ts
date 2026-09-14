@@ -69,12 +69,12 @@ describe("isRouteAllowed", () => {
     expect(isRouteAllowed("waiter", "/staff")).toBe(false);
   });
 
-  it("allows grill_master on orders, waste, kitchen only", () => {
+  it("allows grill_master on orders and kitchen only", () => {
     expect(isRouteAllowed("grill_master", "/dashboard")).toBe(false);
     expect(isRouteAllowed("grill_master", "/inventory")).toBe(false);
     expect(isRouteAllowed("grill_master", "/orders")).toBe(true);
     expect(isRouteAllowed("grill_master", "/orders/uuid-123")).toBe(true);
-    expect(isRouteAllowed("grill_master", "/waste")).toBe(true);
+    expect(isRouteAllowed("grill_master", "/waste")).toBe(false);
     expect(isRouteAllowed("grill_master", "/kitchen")).toBe(true);
   });
 
@@ -127,10 +127,9 @@ describe("getNavRoutesForRole", () => {
     expect(getNavRoutesForRole("admin")).not.toContain("/staff");
   });
 
-  it("excludes dashboard and inventory for grill_master", () => {
+  it("excludes dashboard, inventory, and waste for grill_master", () => {
     expect(getNavRoutesForRole("grill_master")).toEqual([
       "/orders",
-      "/waste",
       "/kitchen",
     ]);
   });

@@ -43,7 +43,7 @@ const ROUTE_META: Record<
   "/dashboard": { label: "Panel", icon: LayoutDashboard },
   "/inventory": { label: "Inventario", icon: Package },
   "/orders": { label: "Pedidos", icon: ClipboardList },
-  "/waste": { label: "Merma", icon: Trash2 },
+  "/waste": { label: "Merma y costos", icon: Trash2 },
   "/kitchen": { label: "Cocina", icon: ChefHat },
 };
 
@@ -55,11 +55,7 @@ const ADMIN_NAV_ORDER: NavAppRoute[] = [
   "/kitchen",
 ];
 
-const GRILL_MASTER_NAV_ORDER: NavAppRoute[] = [
-  "/kitchen",
-  "/orders",
-  "/waste",
-];
+const GRILL_MASTER_NAV_ORDER: NavAppRoute[] = ["/kitchen", "/orders"];
 
 function buildNavItems(role: ReturnType<typeof useSession>["role"]): NavItem[] {
   const allowedRoutes = getNavRoutesForRole(role);

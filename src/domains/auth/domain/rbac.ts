@@ -36,7 +36,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
     "/dashboard": false,
     "/inventory": false,
     "/orders": true,
-    "/waste": true,
+    "/waste": false,
     "/kitchen": true,
     "/staff": false,
   },
