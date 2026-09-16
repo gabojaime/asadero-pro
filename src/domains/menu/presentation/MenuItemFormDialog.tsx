@@ -235,7 +235,7 @@ export function MenuItemFormDialog({
                   id="menu-item-weight"
                   value={weightLabel}
                   onChange={(event) => setWeightLabel(event.target.value)}
-                  placeholder="1kg, 500g…"
+                  placeholder="300g, 500g, 1kg…"
                   aria-invalid={Boolean(fieldErrors.weightLabel)}
                   aria-describedby={
                     fieldErrors.weightLabel

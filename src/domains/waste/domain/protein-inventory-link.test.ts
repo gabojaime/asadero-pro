@@ -54,6 +54,17 @@ describe("inferRecipeLinkForMeatPlate", () => {
     });
   });
 
+  it("infers recipe quantity for custom gram portions", () => {
+    const link = inferRecipeLinkForMeatPlate({
+      proteinGroup: "beef",
+      weightLabel: "300g",
+      materials,
+    });
+
+    expect(link?.recipeQuantityKg).toBe(0.3);
+    expect(link?.rawMaterialId).toBe("rm-beef");
+  });
+
   it("returns null when weight label or protein cannot be resolved", () => {
     expect(
       inferRecipeLinkForMeatPlate({

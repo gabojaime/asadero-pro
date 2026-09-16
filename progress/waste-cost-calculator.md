@@ -228,3 +228,23 @@
 - Default merma % from seed still optional; admin must enter merma unless already in `menu_item_costing`
 
 **Notes:** No commit per user request. Seed remains useful for fresh `db reset` defaults but is no longer required for costing UI.
+
+## 2026-09-16 15:57 — implementer
+
+**Task:** Bugfix — custom meat plate portions (e.g. 300g) stay **Sin receta** after merma save
+
+**Root cause:** `parseWeightLabelToKg` only mapped fixed catalog labels (`1kg`, `500g`, `250g`). Free-form portions such as `300g` returned `null` → `inferRecipeLinkForMeatPlate` failed → `missing_recipe` even with `protein_group` and inventory WAC.
+
+**Changes:**
+- `src/domains/waste/domain/weight-label.ts` — parse any positive `Ng` / `Nkg` label (spaces optional); keep legacy map
+- `src/domains/waste/domain/weight-label.test.ts` — 300g, 350g, 1.2kg, 2kg coverage
+- `src/domains/waste/domain/protein-inventory-link.test.ts` — 300g inference case
+- `src/domains/waste/application/enrich-costing-source-row.test.ts` — 0.3 kg from 300g
+- `src/domains/waste/application/build-costing-row.test.ts` — ready snapshot for 300g + beef + WAC
+- `src/domains/menu/presentation/MenuItemFormDialog.tsx` — placeholder hints custom grams
+
+**Verification:** `pnpm vitest run src/domains/waste` — **38/38 pass**. Manual: create meat_plate `300g` + protein + price → `/waste` → save merma % → Receta (kg) `0.3`, cost columns populate, Estado not **Sin receta** (requires matching insumo WAC > 0).
+
+**Remaining case:** If `protein_group` is null (legacy row or bad data), inference still cannot resolve insumo → **Sin receta**. Menu create already requires protein via `assertKindFieldRules`; edit flow uses `ProteinGroupSelect`. Plain numeric portion without `g`/`kg` suffix (e.g. `300`) still parses as null.
+
+**Notes:** No commit per user request.

@@ -30,4 +30,32 @@ describe("buildMeatPlateCostingRow with inferred recipe", () => {
     expect(row.rawMaterialName).toBe("Carne");
     expect(row.recipeQuantityKg).toBe(1);
   });
+
+  it("reaches ready status for 300g beef plate after inference", () => {
+    const materials = [{ id: "rm-beef", name: "Carne", unitCost: 10 }];
+
+    const enriched = enrichMeatPlateCostingSourceRow(
+      {
+        menuItemId: "menu-custom",
+        name: "Custom beef 300g",
+        weightLabel: "300g",
+        proteinGroup: "beef",
+        currentPrice: 21.5,
+        rawMaterialId: null,
+        rawMaterialName: null,
+        unitCost: null,
+        recipeQuantityKg: null,
+        wastePct: 25,
+      },
+      materials,
+    );
+
+    const row = buildMeatPlateCostingRow(enriched, 0.33);
+
+    expect(row.configurationStatus).toBe("ready");
+    expect(row.recipeQuantityKg).toBe(0.3);
+    expect(row.rawMaterialName).toBe("Carne");
+    expect(row.realIngredientCost).not.toBeNull();
+    expect(row.recommendedPrice).not.toBeNull();
+  });
 });

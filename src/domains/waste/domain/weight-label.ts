@@ -4,6 +4,21 @@ const WEIGHT_LABEL_TO_KG: Record<string, number> = {
   "250g": 0.25,
 };
 
+const GRAMS_PATTERN = /^(\d+(?:\.\d+)?)g$/;
+const KILOGRAMS_PATTERN = /^(\d+(?:\.\d+)?)kg$/;
+
+function normalizeWeightLabel(weightLabel: string): string {
+  return weightLabel.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function parsePositiveNumber(value: string): number | null {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+}
+
 export function parseWeightLabelToKg(
   weightLabel: string | null | undefined,
 ): number | null {
@@ -11,10 +26,26 @@ export function parseWeightLabelToKg(
     return null;
   }
 
-  const normalized = weightLabel.trim().toLowerCase();
+  const normalized = normalizeWeightLabel(weightLabel);
   if (!normalized) {
     return null;
   }
 
-  return WEIGHT_LABEL_TO_KG[normalized] ?? null;
+  const legacyKg = WEIGHT_LABEL_TO_KG[normalized];
+  if (legacyKg != null) {
+    return legacyKg;
+  }
+
+  const gramsMatch = normalized.match(GRAMS_PATTERN);
+  if (gramsMatch) {
+    const grams = parsePositiveNumber(gramsMatch[1]);
+    return grams == null ? null : grams / 1000;
+  }
+
+  const kilogramsMatch = normalized.match(KILOGRAMS_PATTERN);
+  if (kilogramsMatch) {
+    return parsePositiveNumber(kilogramsMatch[1]);
+  }
+
+  return null;
 }

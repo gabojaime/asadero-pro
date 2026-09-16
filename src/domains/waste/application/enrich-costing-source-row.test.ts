@@ -30,6 +30,15 @@ describe("enrichMeatPlateCostingSourceRow", () => {
     expect(enriched.recipeQuantityKg).toBe(0.5);
   });
 
+  it("infers 300g portions as 0.3 kg recipe quantity", () => {
+    const enriched = enrichMeatPlateCostingSourceRow(
+      { ...baseRow, weightLabel: "300g" },
+      materials,
+    );
+
+    expect(enriched.recipeQuantityKg).toBe(0.3);
+  });
+
   it("does not override an existing recipe link from the database", () => {
     const withRecipe: MeatPlateCostingSourceRow = {
       ...baseRow,
