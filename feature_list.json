@@ -79,6 +79,16 @@
       "spec": "specs/menu-items-crud/",
       "spec_path": "specs/menu-items-crud/",
       "progress_path": "progress/menu-items-crud.md"
+    },
+    {
+      "id": "operational-waste-logging",
+      "title": "Operational Waste Logging (Registro de merma)",
+      "status": "spec_ready",
+      "verification": "automated",
+      "notes": "Human approved 2026-09-16. Locked: TZ America/Caracas; OQs as recommended (no waiter; partial stock+warning; /waste-log; RLS admin+grill_master; calendar today). Waiting for implementer — not in_progress. dashboard-metrics remains blocked (not in_progress).",
+      "spec": "specs/operational-waste-logging/",
+      "spec_path": "specs/operational-waste-logging/",
+      "progress_path": "progress/operational-waste-logging.md"
     }
   ]
 }
