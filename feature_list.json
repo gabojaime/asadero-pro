@@ -69,6 +69,16 @@
       "spec": "specs/waste-cost-calculator/",
       "spec_path": "specs/waste-cost-calculator/",
       "progress_path": "progress/waste-cost-calculator.md"
+    },
+    {
+      "id": "menu-items-crud",
+      "title": "Menu Items CRUD (Asadero sellable catalog)",
+      "status": "review_pending",
+      "verification": "automated",
+      "notes": "Implementation complete 2026-09-14. Reviewer pass_with_notes after tsc fix (p_delivery_zone). Vitest 165/165, tsc green. Manual UI/RLS T22–T26 still pending. Status review_pending — not done.",
+      "spec": "specs/menu-items-crud/",
+      "spec_path": "specs/menu-items-crud/",
+      "progress_path": "progress/menu-items-crud.md"
     }
   ]
 }

@@ -48,12 +48,14 @@ src/
 │       ├── layout.tsx                   # Sidebar, header, merchant context
 │       ├── dashboard/page.tsx           # /dashboard
 │       ├── inventory/page.tsx           # /inventory
+│       ├── menu/page.tsx                # /menu (admin catalog CRUD)
 │       ├── orders/page.tsx              # /orders
 │       ├── orders/[orderId]/page.tsx    # /orders/[orderId]
 │       └── waste/page.tsx               # /waste
 ├── domains/
 │   ├── auth/
 │   ├── raw-materials/
+│   ├── menu/
 │   ├── orders/
 │   ├── metrics/
 │   └── waste/
@@ -76,7 +78,7 @@ src/
     └── presentation/                    # Sidebar, Header, shared UI
 ```
 
-Bounded contexts expected for the MVP: `auth`, `raw-materials`, `orders`, `metrics`, `waste`.
+Bounded contexts expected for the MVP: `auth`, `raw-materials`, `menu`, `orders`, `metrics`, `waste`.
 
 ## Four layers
 
@@ -143,6 +145,14 @@ src/app/(app)/inventory/page.tsx
         → domain/validations.ts
         → infrastructure/supabase-repo.ts (port implementation)
           → Supabase Postgres (RLS)
+
+src/app/(app)/menu/page.tsx
+  → domains/menu/presentation/MenuCatalogView.tsx
+    → infrastructure/query-adapters.ts
+      → infrastructure/menu-item-actions.ts (server)
+        → application/use-cases.ts
+          → infrastructure/supabase-menu-repo.ts
+            → menu_items (RLS: tenant SELECT, admin INSERT/UPDATE)
 ```
 
 ## Agent constraints
