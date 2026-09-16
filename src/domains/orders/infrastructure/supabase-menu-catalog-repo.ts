@@ -1,32 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/shared/infrastructure/database/supabase.types";
-import type { MenuItem, MenuItemKind, ProteinGroup } from "../domain/entities";
+import { mapMenuItemRow } from "@/domains/menu/infrastructure/menu-item-row-mapper";
+import type { MenuItem } from "../domain/entities";
 import type { MenuCatalogRepository } from "../domain/repository";
 
-type MenuItemRow = Database["public"]["Tables"]["menu_items"]["Row"];
-
-type MenuItemListRow = Pick<
-  MenuItemRow,
-  | "id"
-  | "merchant_id"
-  | "name"
-  | "price"
-  | "item_kind"
-  | "protein_group"
-  | "weight_label"
-  | "is_active"
->;
-
-function mapMenuItemRow(row: MenuItemListRow): MenuItem {
+function mapActiveCatalogItem(
+  row: Parameters<typeof mapMenuItemRow>[0],
+): MenuItem {
+  const mapped = mapMenuItemRow(row);
   return {
-    id: row.id,
-    merchantId: row.merchant_id,
-    name: row.name,
-    price: Number(row.price),
-    itemKind: row.item_kind as MenuItemKind,
-    proteinGroup: row.protein_group as ProteinGroup | null,
-    weightLabel: row.weight_label,
-    isActive: row.is_active,
+    id: mapped.id,
+    merchantId: mapped.merchantId,
+    name: mapped.name,
+    price: mapped.price,
+    itemKind: mapped.itemKind,
+    proteinGroup: mapped.proteinGroup,
+    weightLabel: mapped.weightLabel,
+    isActive: mapped.isActive,
   };
 }
 
@@ -48,7 +38,7 @@ export function createMenuCatalogRepository(
         throw error;
       }
 
-      return (data ?? []).map(mapMenuItemRow);
+      return (data ?? []).map(mapActiveCatalogItem);
     },
   };
 }
