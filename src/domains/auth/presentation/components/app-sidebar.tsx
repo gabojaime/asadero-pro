@@ -7,11 +7,16 @@ import {
   ClipboardList,
   LayoutDashboard,
   Package,
+  Scale,
   Trash2,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
-import { getNavRoutesForRole, type NavAppRoute } from "@/domains/auth/domain/rbac";
+import {
+  getNavRoutesForRole,
+  isRouteAllowed,
+  type NavAppRoute,
+} from "@/domains/auth/domain/rbac";
 import { ROLE_LABELS } from "@/domains/auth/domain/role-labels";
 import { useSession } from "@/domains/auth/presentation/providers/session-provider";
 import { useSignOut } from "@/domains/auth/infrastructure/query-adapters";
@@ -60,6 +65,13 @@ const ADMIN_NAV_ORDER: NavAppRoute[] = [
 
 const GRILL_MASTER_NAV_ORDER: NavAppRoute[] = ["/kitchen", "/orders"];
 
+const WASTE_LOG_NAV: NavItem = {
+  href: "/waste-log",
+  label: "Registrar merma",
+  icon: Scale,
+  matchPath: "/waste-log",
+};
+
 function buildNavItems(role: ReturnType<typeof useSession>["role"]): NavItem[] {
   const allowedRoutes = getNavRoutesForRole(role);
   const order =
@@ -77,6 +89,12 @@ function buildNavItems(role: ReturnType<typeof useSession>["role"]): NavItem[] {
       icon: ROUTE_META[route].icon,
       matchPath: route,
     }));
+
+  if (isRouteAllowed(role, "/waste-log")) {
+    const kitchenIndex = items.findIndex((item) => item.href === "/kitchen");
+    const insertAt = kitchenIndex >= 0 ? kitchenIndex + 1 : items.length;
+    items.splice(insertAt, 0, WASTE_LOG_NAV);
+  }
 
   if (role === "admin") {
     const personalItem: NavItem = {

@@ -46,6 +46,7 @@ export type Database = {
           raw_material_id: string
           recorded_by: string | null
           unit_cost: number
+          waste_log_id: string | null
         }
         Insert: {
           created_at?: string
@@ -58,6 +59,7 @@ export type Database = {
           raw_material_id: string
           recorded_by?: string | null
           unit_cost: number
+          waste_log_id?: string | null
         }
         Update: {
           created_at?: string
@@ -70,6 +72,7 @@ export type Database = {
           raw_material_id?: string
           recorded_by?: string | null
           unit_cost?: number
+          waste_log_id?: string | null
         }
         Relationships: [
           {
@@ -98,6 +101,13 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_waste_log_id_fkey"
+            columns: ["waste_log_id"]
+            isOneToOne: false
+            referencedRelation: "waste_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -624,6 +634,14 @@ export type Database = {
       get_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      log_operational_waste: {
+        Args: {
+          p_raw_material_id: string
+          p_weight_kg: number
+          p_reason: Database["public"]["Enums"]["waste_reason"]
+        }
+        Returns: Json
       }
     }
     Enums: {

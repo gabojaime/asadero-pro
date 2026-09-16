@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "@/domains/auth/presentation/providers/session-context";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
@@ -61,9 +62,19 @@ export function KitchenQueueView() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-[28px] font-semibold leading-8 tracking-tight">
-          {ORDER_COPY.kitchenTitle}
-        </h1>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="text-[28px] font-semibold leading-8 tracking-tight">
+            {ORDER_COPY.kitchenTitle}
+          </h1>
+          {canMarkReady ? (
+            <Link
+              href="/waste-log"
+              className="text-[13px] font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Registrar merma
+            </Link>
+          ) : null}
+        </div>
         {isReconnecting ? (
           <p className="mt-2 text-[13px] text-primary">
             {ORDER_COPY.reconnecting}

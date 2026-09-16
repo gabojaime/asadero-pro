@@ -1,8 +1,14 @@
+import type { UserRole } from "@/domains/auth/domain/entities";
 import type { ProteinGroup } from "@/domains/orders/domain/entities";
 import type {
   MeatPlateCostingSnapshot,
   MeatPlateCostingSourceRow,
 } from "./entities";
+import type {
+  KgRawMaterialOption,
+  OperationalWasteLog,
+  OperationalWasteLogInput,
+} from "./operational-waste";
 import type { InventoryMaterialRef } from "./protein-inventory-link";
 
 export interface CostingRepository {
@@ -40,6 +46,24 @@ export interface InventoryDeductionRepository {
       appliedKg: number;
     }>;
   }>;
+}
+
+export interface OperationalWasteRepository {
+  logWaste(params: {
+    merchantId: string;
+    actorUserId: string;
+    actorRole: UserRole;
+    input: OperationalWasteLogInput;
+  }): Promise<{ log: OperationalWasteLog; partialStock: boolean }>;
+
+  listLogsForLocalDay(params: {
+    merchantId: string;
+    dayStartIso: string;
+    dayEndIso: string;
+    limit: number;
+  }): Promise<OperationalWasteLog[]>;
+
+  listKgRawMaterials(merchantId: string): Promise<KgRawMaterialOption[]>;
 }
 
 export type { MeatPlateCostingSnapshot };

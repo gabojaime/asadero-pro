@@ -82,6 +82,7 @@ describe("isRouteAllowed", () => {
     expect(isRouteAllowed("grill_master", "/orders")).toBe(true);
     expect(isRouteAllowed("grill_master", "/orders/uuid-123")).toBe(true);
     expect(isRouteAllowed("grill_master", "/waste")).toBe(false);
+    expect(isRouteAllowed("grill_master", "/waste-log")).toBe(true);
     expect(isRouteAllowed("grill_master", "/kitchen")).toBe(true);
   });
 
@@ -92,6 +93,7 @@ describe("isRouteAllowed", () => {
     expect(isRouteAllowed("waiter", "/inventory")).toBe(false);
     expect(isRouteAllowed("waiter", "/menu")).toBe(false);
     expect(isRouteAllowed("waiter", "/waste")).toBe(false);
+    expect(isRouteAllowed("waiter", "/waste-log")).toBe(false);
     expect(isRouteAllowed("waiter", "/kitchen")).toBe(false);
   });
 });
@@ -115,6 +117,7 @@ describe("resolveRoleRedirect", () => {
     expect(resolveRoleRedirect("waiter", "/inventory")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/menu")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/waste")).toBe("/orders");
+    expect(resolveRoleRedirect("waiter", "/waste-log")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/kitchen")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/staff")).toBe("/orders");
   });

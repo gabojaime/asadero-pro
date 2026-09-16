@@ -6,6 +6,7 @@ export type AppRoute =
   | "/menu"
   | "/orders"
   | "/waste"
+  | "/waste-log"
   | "/kitchen"
   | "/staff";
 
@@ -21,7 +22,13 @@ export const APP_NAV_ROUTES = [
 export type NavAppRoute = (typeof APP_NAV_ROUTES)[number];
 
 export const PROTECTED_APP_ROUTES: readonly AppRoute[] = [
-  ...APP_NAV_ROUTES,
+  "/dashboard",
+  "/inventory",
+  "/menu",
+  "/orders",
+  "/waste-log",
+  "/waste",
+  "/kitchen",
   "/staff",
 ] as const;
 
@@ -32,6 +39,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
     "/menu": true,
     "/orders": true,
     "/waste": true,
+    "/waste-log": true,
     "/kitchen": true,
     "/staff": true,
   },
@@ -41,6 +49,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
     "/menu": false,
     "/orders": true,
     "/waste": false,
+    "/waste-log": true,
     "/kitchen": true,
     "/staff": false,
   },
@@ -50,6 +59,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
     "/menu": false,
     "/orders": true,
     "/waste": false,
+    "/waste-log": false,
     "/kitchen": false,
     "/staff": false,
   },

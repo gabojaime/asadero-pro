@@ -83,9 +83,9 @@
     {
       "id": "operational-waste-logging",
       "title": "Operational Waste Logging (Registro de merma)",
-      "status": "spec_ready",
+      "status": "review_pending",
       "verification": "automated",
-      "notes": "Human approved 2026-09-16. Locked: TZ America/Caracas; OQs as recommended (no waiter; partial stock+warning; /waste-log; RLS admin+grill_master; calendar today). Waiting for implementer — not in_progress. dashboard-metrics remains blocked (not in_progress).",
+      "notes": "Implementation complete 2026-09-16. Vitest 190/190, tsc green. Migration applied locally. Manual smoke: AC-1 grill_master + AC-2 waiter pass 2026-09-16 (QA emails in progress journal). AC-9 cross-tenant still deferred; leader may close if acceptable.",
       "spec": "specs/operational-waste-logging/",
       "spec_path": "specs/operational-waste-logging/",
       "progress_path": "progress/operational-waste-logging.md"

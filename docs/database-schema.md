@@ -135,6 +135,24 @@ ALTER TABLE inventory_movements
 
 Admin-only RLS on `menu_item_costing`; `recipe_ingredients` writes admin-only (tenant read for all roles). Order completion deduction uses SECURITY DEFINER RPC (waiter/admin).
 
+**Operational waste logging** (`20260916160000_operational_waste_logging.sql`):
+
+```sql
+-- movement_type adds: waste_log (quantity > 0)
+ALTER TABLE inventory_movements ADD COLUMN waste_log_id UUID NULL REFERENCES waste_logs(id);
+
+-- RPC: log_operational_waste(raw_material_id, weight_kg, reason)
+-- Inserts waste_logs, decrements quantity_on_hand (partial when on-hand < weight), audit movement.
+
+DROP POLICY "Users can insert waste logs of their merchant" ON waste_logs;
+CREATE POLICY "Staff can insert waste logs for their merchant"
+ON waste_logs FOR INSERT TO authenticated
+WITH CHECK (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() IN ('admin', 'grill_master')
+);
+```
+
 **Review fixes** (`20260912170000_order_kitchen_review_fixes.sql`):
 
 - `create_order_with_items(...)` RPC — atomic insert of order + items + sides in one transaction
@@ -355,9 +373,12 @@ CREATE POLICY "Users can read waste logs of their merchant"
 ON waste_logs FOR SELECT TO authenticated
 USING (merchant_id = get_user_merchant_id());
 
-CREATE POLICY "Users can insert waste logs of their merchant"
+CREATE POLICY "Staff can insert waste logs for their merchant"
 ON waste_logs FOR INSERT TO authenticated
-WITH CHECK (merchant_id = get_user_merchant_id());
+WITH CHECK (
+  merchant_id = get_user_merchant_id()
+  AND get_user_role() IN ('admin', 'grill_master')
+);
 
 CREATE POLICY "Users can manage table sessions of their merchant"
 ON table_sessions_log FOR ALL TO authenticated
