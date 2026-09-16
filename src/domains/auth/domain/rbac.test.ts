@@ -69,9 +69,16 @@ describe("isRouteAllowed", () => {
     expect(isRouteAllowed("waiter", "/staff")).toBe(false);
   });
 
+  it("allows admin on /menu and denies other roles (AC-17)", () => {
+    expect(isRouteAllowed("admin", "/menu")).toBe(true);
+    expect(isRouteAllowed("grill_master", "/menu")).toBe(false);
+    expect(isRouteAllowed("waiter", "/menu")).toBe(false);
+  });
+
   it("allows grill_master on orders and kitchen only", () => {
     expect(isRouteAllowed("grill_master", "/dashboard")).toBe(false);
     expect(isRouteAllowed("grill_master", "/inventory")).toBe(false);
+    expect(isRouteAllowed("grill_master", "/menu")).toBe(false);
     expect(isRouteAllowed("grill_master", "/orders")).toBe(true);
     expect(isRouteAllowed("grill_master", "/orders/uuid-123")).toBe(true);
     expect(isRouteAllowed("grill_master", "/waste")).toBe(false);
@@ -83,6 +90,7 @@ describe("isRouteAllowed", () => {
     expect(isRouteAllowed("waiter", "/orders/uuid-123")).toBe(true);
     expect(isRouteAllowed("waiter", "/dashboard")).toBe(false);
     expect(isRouteAllowed("waiter", "/inventory")).toBe(false);
+    expect(isRouteAllowed("waiter", "/menu")).toBe(false);
     expect(isRouteAllowed("waiter", "/waste")).toBe(false);
     expect(isRouteAllowed("waiter", "/kitchen")).toBe(false);
   });
@@ -95,15 +103,17 @@ describe("resolveRoleRedirect", () => {
     expect(resolveRoleRedirect("waiter", "/orders")).toBeNull();
   });
 
-  it("redirects grill_master from dashboard, inventory, and staff to kitchen", () => {
+  it("redirects grill_master from dashboard, inventory, menu, and staff to kitchen", () => {
     expect(resolveRoleRedirect("grill_master", "/dashboard")).toBe("/kitchen");
     expect(resolveRoleRedirect("grill_master", "/inventory")).toBe("/kitchen");
+    expect(resolveRoleRedirect("grill_master", "/menu")).toBe("/kitchen");
     expect(resolveRoleRedirect("grill_master", "/staff")).toBe("/kitchen");
   });
 
   it("redirects waiter from blocked routes to orders", () => {
     expect(resolveRoleRedirect("waiter", "/dashboard")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/inventory")).toBe("/orders");
+    expect(resolveRoleRedirect("waiter", "/menu")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/waste")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/kitchen")).toBe("/orders");
     expect(resolveRoleRedirect("waiter", "/staff")).toBe("/orders");
@@ -120,6 +130,7 @@ describe("getNavRoutesForRole", () => {
     expect(getNavRoutesForRole("admin")).toEqual([
       "/dashboard",
       "/inventory",
+      "/menu",
       "/orders",
       "/waste",
       "/kitchen",

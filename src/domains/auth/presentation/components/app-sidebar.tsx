@@ -9,6 +9,7 @@ import {
   Package,
   Trash2,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import { getNavRoutesForRole, type NavAppRoute } from "@/domains/auth/domain/rbac";
 import { ROLE_LABELS } from "@/domains/auth/domain/role-labels";
@@ -42,6 +43,7 @@ const ROUTE_META: Record<
 > = {
   "/dashboard": { label: "Panel", icon: LayoutDashboard },
   "/inventory": { label: "Inventario", icon: Package },
+  "/menu": { label: "Menú", icon: UtensilsCrossed },
   "/orders": { label: "Pedidos", icon: ClipboardList },
   "/waste": { label: "Merma y costos", icon: Trash2 },
   "/kitchen": { label: "Cocina", icon: ChefHat },
@@ -50,6 +52,7 @@ const ROUTE_META: Record<
 const ADMIN_NAV_ORDER: NavAppRoute[] = [
   "/dashboard",
   "/inventory",
+  "/menu",
   "/orders",
   "/waste",
   "/kitchen",

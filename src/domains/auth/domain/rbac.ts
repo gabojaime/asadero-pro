@@ -3,6 +3,7 @@ import type { SessionProfile, UserRole } from "./entities";
 export type AppRoute =
   | "/dashboard"
   | "/inventory"
+  | "/menu"
   | "/orders"
   | "/waste"
   | "/kitchen"
@@ -11,6 +12,7 @@ export type AppRoute =
 export const APP_NAV_ROUTES = [
   "/dashboard",
   "/inventory",
+  "/menu",
   "/orders",
   "/waste",
   "/kitchen",
@@ -27,6 +29,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
   admin: {
     "/dashboard": true,
     "/inventory": true,
+    "/menu": true,
     "/orders": true,
     "/waste": true,
     "/kitchen": true,
@@ -35,6 +38,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
   grill_master: {
     "/dashboard": false,
     "/inventory": false,
+    "/menu": false,
     "/orders": true,
     "/waste": false,
     "/kitchen": true,
@@ -43,6 +47,7 @@ const ROLE_ROUTE_ACCESS: Record<UserRole, Record<AppRoute, boolean>> = {
   waiter: {
     "/dashboard": false,
     "/inventory": false,
+    "/menu": false,
     "/orders": true,
     "/waste": false,
     "/kitchen": false,
