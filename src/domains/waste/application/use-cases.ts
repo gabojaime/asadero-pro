@@ -11,6 +11,7 @@ import {
 import {
   buildMeatPlateCostingSnapshot,
 } from "./build-costing-row";
+import { enrichMeatPlateCostingSourceRows } from "./enrich-costing-source-row";
 
 function assertAdmin(profile: SessionProfile): void {
   if (profile.role !== "admin") {
@@ -54,17 +55,29 @@ function sortCostingRows<T extends { proteinGroup: string | null; weightLabel: s
   });
 }
 
+async function loadEnrichedCostingSnapshot(
+  merchantId: string,
+  repository: CostingRepository,
+): Promise<MeatPlateCostingSnapshot> {
+  const [{ targetFoodCostPct, rows }, materials] = await Promise.all([
+    repository.listMeatPlateCosting(merchantId),
+    repository.listProteinInventoryMaterials(merchantId),
+  ]);
+
+  const enrichedRows = enrichMeatPlateCostingSourceRows(rows, materials);
+  return buildMeatPlateCostingSnapshot(targetFoodCostPct, enrichedRows);
+}
+
 export async function listMeatPlateCosting(
   profile: SessionProfile,
   repository: CostingRepository,
 ): Promise<MeatPlateCostingSnapshot> {
   assertAdmin(profile);
 
-  const { targetFoodCostPct, rows } = await repository.listMeatPlateCosting(
+  const snapshot = await loadEnrichedCostingSnapshot(
     profile.merchantId!,
+    repository,
   );
-
-  const snapshot = buildMeatPlateCostingSnapshot(targetFoodCostPct, rows);
   return {
     ...snapshot,
     rows: sortCostingRows(snapshot.rows),
@@ -87,11 +100,27 @@ export async function updateWastePct(
     );
   }
 
+  const merchantId = profile.merchantId!;
+
   await repository.upsertWastePct({
-    merchantId: profile.merchantId!,
+    merchantId,
     menuItemId: validation.data.menuItemId,
     wastePct: validation.data.wastePct,
   });
+
+  const { rows } = await repository.listMeatPlateCosting(merchantId);
+  const sourceRow = rows.find(
+    (row) => row.menuItemId === validation.data.menuItemId,
+  );
+
+  if (sourceRow) {
+    await repository.ensureInferredRecipeIngredient({
+      merchantId,
+      menuItemId: validation.data.menuItemId,
+      proteinGroup: sourceRow.proteinGroup,
+      weightLabel: sourceRow.weightLabel,
+    });
+  }
 
   return listMeatPlateCosting(profile, repository);
 }

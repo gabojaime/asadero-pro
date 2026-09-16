@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/shared/infrastructure/database/supabase.types";
 import type { ProteinGroup } from "@/domains/orders/domain/entities";
+import {
+  inferRecipeLinkForMeatPlate,
+  type InventoryMaterialRef,
+} from "../domain/protein-inventory-link";
 import { WasteError } from "../domain/errors";
 import type {
   CostingRepository,
@@ -62,6 +66,27 @@ function mapPostgresError(error: { message: string }): never {
   throw error;
 }
 
+async function fetchProteinInventoryMaterials(
+  supabase: SupabaseClient<Database>,
+  merchantId: string,
+): Promise<InventoryMaterialRef[]> {
+  const { data, error } = await supabase
+    .from("raw_materials_inventory")
+    .select("id, name, unit_cost")
+    .eq("merchant_id", merchantId)
+    .eq("is_active", true);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    unitCost: Number(row.unit_cost),
+  }));
+}
+
 export function createCostingRepository(
   supabase: SupabaseClient<Database>,
 ): CostingRepository {
@@ -113,6 +138,58 @@ export function createCostingRepository(
         targetFoodCostPct: Number(merchant.target_food_cost_pct),
         rows: (data ?? []).map((row) => mapCostingRow(row as CostingListRow)),
       };
+    },
+
+    async listProteinInventoryMaterials(merchantId) {
+      return fetchProteinInventoryMaterials(supabase, merchantId);
+    },
+
+    async ensureInferredRecipeIngredient({
+      merchantId,
+      menuItemId,
+      proteinGroup,
+      weightLabel,
+    }) {
+      const { data: existing, error: existingError } = await supabase
+        .from("recipe_ingredients")
+        .select("id")
+        .eq("menu_item_id", menuItemId)
+        .maybeSingle();
+
+      if (existingError) {
+        mapPostgresError(existingError);
+      }
+
+      if (existing) {
+        return;
+      }
+
+      const materials = await fetchProteinInventoryMaterials(
+        supabase,
+        merchantId,
+      );
+
+      const inferred = inferRecipeLinkForMeatPlate({
+        proteinGroup,
+        weightLabel,
+        materials,
+      });
+
+      if (!inferred) {
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from("recipe_ingredients")
+        .insert({
+          menu_item_id: menuItemId,
+          raw_material_id: inferred.rawMaterialId,
+          quantity_kg: inferred.recipeQuantityKg,
+        });
+
+      if (insertError) {
+        mapPostgresError(insertError);
+      }
     },
 
     async upsertWastePct({ merchantId, menuItemId, wastePct }) {

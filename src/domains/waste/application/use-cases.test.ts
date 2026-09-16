@@ -53,6 +53,15 @@ function createFakeCostingRepo(
         rows: [{ ...sourceRow, wastePct }],
       };
     },
+    async listProteinInventoryMaterials() {
+      return [
+        {
+          id: sourceRow.rawMaterialId!,
+          name: sourceRow.rawMaterialName!,
+          unitCost: sourceRow.unitCost!,
+        },
+      ];
+    },
     async upsertWastePct(params) {
       if (params.wastePct === 25) {
         wastePct = 25;
@@ -60,6 +69,7 @@ function createFakeCostingRepo(
         wastePct = params.wastePct;
       }
     },
+    async ensureInferredRecipeIngredient() {},
     async updateTargetFoodCostPct(params) {
       targetFoodCostPct = params.targetFoodCostPct;
       return targetFoodCostPct;
@@ -85,6 +95,34 @@ describe("listMeatPlateCosting", () => {
     expect(snapshot.rows[0]?.realIngredientCost).toBeCloseTo(14.29, 2);
     expect(snapshot.rows[0]?.recommendedPrice).toBeCloseTo(43.3, 1);
     expect(snapshot.rows[0]?.configurationStatus).toBe("ready");
+  });
+
+  it("infers recipe from weight label and protein when recipe_ingredients is missing", async () => {
+    const repo = createFakeCostingRepo({
+      async listMeatPlateCosting() {
+        return {
+          targetFoodCostPct: 0.33,
+          rows: [
+            {
+              ...sourceRow,
+              rawMaterialId: null,
+              rawMaterialName: null,
+              unitCost: null,
+              recipeQuantityKg: null,
+            },
+          ],
+        };
+      },
+      async listProteinInventoryMaterials() {
+        return [{ id: "rm-beef", name: "Carne", unitCost: 10 }];
+      },
+    });
+
+    const snapshot = await listMeatPlateCosting(adminProfile, repo);
+
+    expect(snapshot.rows[0]?.configurationStatus).toBe("ready");
+    expect(snapshot.rows[0]?.rawMaterialName).toBe("Carne");
+    expect(snapshot.rows[0]?.recipeQuantityKg).toBe(1);
   });
 });
 

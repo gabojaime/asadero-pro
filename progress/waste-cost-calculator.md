@@ -198,3 +198,33 @@
 **Verification:** `pnpm vitest run src/domains/waste/infrastructure/menu-item-costing-embed.test.ts` (pass). Manual: admin `/waste` → enter merma % → Guardar → Rendimiento %, Costo real, Precio recomendado, Delta populate; Estado badge clears (ready).
 
 **Notes:** No commit per user request.
+
+## 2026-09-16 15:24 — implementer
+
+**Task:** OQ-5 fallback — costing without `waste_cost_calculator.sql` seed (recipe inference)
+
+**Problem:** `/waste` showed **Sin receta** and empty cost columns unless `supabase/seeds/waste_cost_calculator.sql` inserted `recipe_ingredients` (and optionally default `menu_item_costing.waste_pct`). Users with menu catalog + inventory receipts still had no costing math.
+
+**Changes:**
+- `src/domains/waste/domain/protein-inventory-link.ts` — map `protein_group` → insumo name (`Carne` / `Pollo` / `Cochino`); infer recipe link from `weight_label` kg + inventory WAC
+- `src/domains/waste/domain/protein-inventory-link.test.ts` — Vitest
+- `src/domains/waste/application/enrich-costing-source-row.ts` — merge inferred link when DB recipe row missing
+- `src/domains/waste/application/enrich-costing-source-row.test.ts` — Vitest
+- `src/domains/waste/application/build-costing-row.test.ts` — ready status via inference
+- `src/domains/waste/application/use-cases.ts` — enrich on list; on merma save call `ensureInferredRecipeIngredient`
+- `src/domains/waste/domain/repository.ts` — port methods `listProteinInventoryMaterials`, `ensureInferredRecipeIngredient`
+- `src/domains/waste/infrastructure/supabase-costing-repo.ts` — load active inventory; upsert `recipe_ingredients` when missing (idempotent)
+- `src/domains/waste/application/use-cases.test.ts` — inference path + fake repo stubs
+
+**Verification:**
+- `pnpm vitest run src/domains/waste` — **34/34 pass**
+- Manual (no `waste_cost_calculator.sql`): admin `/waste` with meat plates (`protein_group` + `weight_label`), inventory WAC > 0 on matching insumo, user-set merma % → table shows Insumo, Receta (kg), Rendimiento, Costo real, Precio recomendado, Delta; badge not **Sin receta**
+- After **Guardar** merma once, `recipe_ingredients` row should exist → order completion deduction can use same qty (no seed)
+
+**Limitations:**
+- Inference requires exact MVP insumo names (case-insensitive): Carne / Pollo / Cochino per merchant inventory seed
+- Unknown `weight_label` or missing `protein_group` still → **Sin receta**
+- View-only costing works without saving merma; persisting recipe link for checkout happens on first successful **Guardar** merma (or if recipe already seeded)
+- Default merma % from seed still optional; admin must enter merma unless already in `menu_item_costing`
+
+**Notes:** No commit per user request. Seed remains useful for fresh `db reset` defaults but is no longer required for costing UI.
