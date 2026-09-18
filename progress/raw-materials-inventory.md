@@ -221,3 +221,43 @@
 **Verification:** Chrome DevTools MCP on `http://localhost:3000/inventory` — 18 seed rows → page 1 shows 10, “Página 1 de 2”; Siguiente → page 2 (8 rows), Anterior/Siguiente disabled at bounds; page size 25 → all rows, pagination hidden. `pnpm exec tsc --noEmit` pass.
 
 **Notes:** Page size stored in component local state (not URL). No server/query adapter changes. Empty/loading/error paths unchanged (`InventoryView` still gates table render).
+
+## 2026-09-18 17:12 — implementer
+
+**Task:** In-app starter catalog load from empty inventory (post-onboarding)
+
+**Changes:**
+- `src/domains/raw-materials/domain/starter-catalog.ts` — 18-item floor catalog + `normalizeRawMaterialName` (sync with SQL seed)
+- `src/domains/raw-materials/domain/starter-catalog.test.ts` — count + unique names
+- `src/domains/raw-materials/domain/repository.ts` — `createMany`
+- `src/domains/raw-materials/infrastructure/supabase-repo.ts` — batch insert with create defaults (qty 0, cost 0, active)
+- `src/domains/raw-materials/application/use-cases.ts` — `seedStarterRawMaterials` (admin, skip existing names case-insensitively)
+- `src/domains/raw-materials/application/use-cases.test.ts` — RBAC, full insert, skip duplicates
+- `src/domains/raw-materials/infrastructure/raw-material-actions.ts` — `seedStarterRawMaterialsAction`
+- `src/domains/raw-materials/infrastructure/query-adapters.ts` — `useSeedStarterRawMaterials`, optional `enabled` on list hook
+- `src/domains/raw-materials/presentation/InventoryView.tsx` — empty state: **Nuevo insumo** + **Cargar insumos iniciales** (only when merchant has zero rows total)
+- `supabase/seeds/dev_raw_materials.sql` — comment pointing to TS constant
+- `docs/supabase.md` — document in-app load path
+
+**Verification:** Vitest raw-materials 37/37; `tsc --noEmit` pass. Browser smoke pending (empty merchant → load → 18 rows, pagination page 2).
+
+**Notes:** Idempotency: UI hides starter CTA if any `raw_materials_inventory` row exists; server skips names already present (`lower(trim(name))`). `merchant_id` from session profile only.
+
+## 2026-09-18 17:24 — implementer (browser smoke)
+
+**Task:** Starter catalog load — Chrome DevTools MCP
+
+**Flow:** Register `inventory.starter.smoke.20260918@example.com` → onboarding merchant **Smoke Starter Catalog** → `/inventory` empty state.
+
+**Results:**
+
+| Step | Result |
+|------|--------|
+| Empty state shows **Nuevo insumo** + **Cargar insumos iniciales** | Pass |
+| Click seed → status “Se cargaron 18 insumos iniciales.” | Pass |
+| Table page 1 = 10 rows, “Página 1 de 2” | Pass |
+| Siguiente → page 2 (8 rows), “Página 2 de 2” | Pass |
+| Reload → table persists; **Cargar insumos iniciales** hidden | Pass |
+| Re-seed from UI | N/A (CTA not shown when rows exist) |
+
+**Notes:** Isolated Chrome DevTools profile; local Supabase `enable_confirmations = false`.

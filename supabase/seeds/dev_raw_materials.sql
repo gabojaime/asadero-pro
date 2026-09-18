@@ -1,4 +1,6 @@
 -- Local/dev seed: 18 floor raw materials per merchant (idempotent).
+-- Names/UoM must stay in sync with src/domains/raw-materials/domain/starter-catalog.ts
+-- (admins can also load the same catalog from empty /inventory in the app).
 -- Requires at least one row in merchants (run onboarding, then re-seed if needed).
 
 INSERT INTO raw_materials_inventory (

@@ -68,7 +68,7 @@ Both SQL files are idempotent — safe to re-run; they attach rows to every exis
 2. Complete merchant onboarding in the app (creates `merchants` + admin `users`)
 3. Re-apply catalog seeds (step 1 wipes data, so skip if you just reset): `pnpm db:seed` or the two `db query` commands above
 
-Production onboarding must **not** auto-insert this catalog unless a future spec adds a template feature.
+Production onboarding must **not** auto-insert this catalog unless a future spec adds a template feature. Admins with an empty inventory can load the same 18-item starter catalog from **Inventario** (`/inventory`) via **Cargar insumos iniciales**.
 
 `orders` is added to the `supabase_realtime` publication in migration `20260912160000_order_kitchen_queue.sql` for kitchen queue updates.
 
