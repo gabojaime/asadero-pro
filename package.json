@@ -1,5 +1,14 @@
 {
   "private": true,
+  "version": "1.0.0",
+  "name": "restaurant-management-system",
+  "description": "Restaurant Management System",
+  "author": "gabojaime",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gabojaime/asadero-pro.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
