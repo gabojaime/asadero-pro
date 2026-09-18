@@ -34,7 +34,7 @@ As an **admin**, I see **when dine-in sessions cluster** (hour × day-of-week) t
 
 Dashboard supports `today | last_7_days | month_to_date`. All aggregates filter by `merchant_id = get_user_merchant_id()` and order/waste/movement timestamps within the period bounds.
 
-**Timezone:** Use `America/Mexico_City` for period boundaries until `merchants.timezone` exists (OQ-2).
+**Timezone:** Period bounds (today, last 7 days, month-to-date, daily chart buckets) use IANA **`America/Caracas`** until `merchants.timezone` exists (locked **OQ-2**). Same calendar-day convention as operational waste history ([operational-waste-logging](../operational-waste-logging/requirements.md#resolved-decisions-locked) OQ-5).
 
 ### FR-2 — Revenue basis (net sales)
 
@@ -224,10 +224,21 @@ Spanish UI labels on presentation; English code/specs.
 
 ---
 
+## Resolved decisions (locked)
+
+Human closed **OQ-2**. Implementer must **not** re-open without a new spec patch and human re-approval.
+
+| ID | Decision |
+|----|----------|
+| OQ-2 | Dashboard period boundaries and day bucketing use **`America/Caracas`** (Venezuela operations) until `merchants.timezone` exists — **not** rolling UTC windows; matches operational waste “today” calendar day |
+
+**Dashboard period timezone constant (until `merchants.timezone`):** `America/Caracas` (e.g. `DASHBOARD_TIMEZONE` in domain).
+
+---
+
 ## Open questions (human approval)
 
 | ID | Question | Default if silent |
 |----|----------|-------------------|
 | OQ-1 | Fixed overhead + table count: dashboard strip vs `/settings` page? | Dashboard strip only (this feature) |
-| OQ-2 | Period timezone: fixed `America/Mexico_City` vs new `merchants.timezone` column? | Fixed Mexico City |
 | OQ-3 | Bundle operational `waste_logs` logging UI in same feature or next? | Next feature; dashboard read-only |

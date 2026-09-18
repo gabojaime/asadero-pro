@@ -8,9 +8,9 @@ Query adapters for these metrics live in `src/domains/metrics/infrastructure/`. 
 
 ### Food Cost %
 
-`(Total Cost of Ingredients Used / Total Sales) * 100`
+`(Ingredient cost from order deductions + logged operational waste cost) / Net sales × 100`
 
-Target: **30.0% to 35.0%**. Use inventory unit costs so meat price spikes show up immediately.
+Target: **30.0% to 35.0%** (merchant `target_food_cost_pct`, default 33%). Use inventory unit costs so meat price spikes show up immediately.
 
 ### Contribution margin (per portion)
 
@@ -23,15 +23,11 @@ High-margin plates (e.g. arrachera) should be easy to spot on the dashboard.
 - Revenue: `Fixed Overhead Costs / Contribution Margin Ratio`
 - Portions: `Fixed Overhead Costs / Average Contribution Margin per Portion`
 
-Fixed overhead includes rent, salary, utilities (exact inputs belong in a spec).
+Fixed overhead includes rent, salary, utilities (`merchants.monthly_fixed_overhead`).
 
-### CAC
+### CAC / LTV
 
-`Marketing Investment / Number of New Customers Acquired`
-
-### LTV
-
-`Average Order Value × Average Purchase Frequency × Customer Lifespan (Months) × Gross Margin %`
+Documented for future marketing/customer features; **not implemented** on the MVP dashboard.
 
 ## Operational
 
@@ -43,15 +39,15 @@ Target: **< 5.0%**. Reasons: `burned_on_grill`, `fat_discarded`, `spoiled_raw`, 
 
 ### Average ticket
 
-`Total Session Sales / Total Tables or Orders Completed`
+`Net sales / Completed orders in period`
 
 ### Ticket time (minutes)
 
-`Order Served Timestamp - Order Placed Timestamp`
+`(ready_at − sent_to_kitchen_at)` for kitchen queue orders (median and P90 on dashboard).
 
 ### Table turnover
 
-`Total Table Sessions Completed / Total Available Tables Count`
+`Sessions completed in period / seating table count / days in period`
 
 ### Occupancy %
 

@@ -1,6 +1,6 @@
 # Tasks — Metrics & Analytics Dashboard
 
-**Gate:** Human approves spec + OQ-1–OQ-3. Leader sets `feature_list.json` → `spec_ready` / `in_progress` and creates `progress/dashboard-metrics.md`.
+**Gate:** Human approves spec + **OQ-1**, **OQ-3**. **OQ-2 locked:** period timezone **`America/Caracas`** (same calendar day as [operational-waste-logging](../operational-waste-logging/)). Leader sets `feature_list.json` → `spec_ready` / `in_progress` and creates `progress/dashboard-metrics.md`.
 
 **Dependencies:** `order-kitchen-queue` (done), `waste-cost-calculator` + `menu-items-crud` (should be merged or available locally for costing/recipes).
 
@@ -35,7 +35,7 @@
 - [ ] **T4** — `domains/metrics/domain/entities.ts`, `errors.ts`. (`vitest` prep)
 - [ ] **T5** — `domains/metrics/domain/formulas.ts`: M-1, M-5, M-6, M-7 stats, M-3/M-4 BEP, M-9 turnover. (`vitest`)
 - [ ] **T6** — `domains/metrics/domain/formulas.test.ts` — fixtures for AC-2–AC-5, zero-sales guards. (`vitest`)
-- [ ] **T7** — `domains/metrics/domain/validations.ts` + tests for overhead/table count/period. (`vitest`)
+- [ ] **T7** — `domains/metrics/domain/validations.ts` + tests for overhead/table count/period; `period-bounds.ts` + `DASHBOARD_TIMEZONE` **`America/Caracas`** per locked OQ-2. (`vitest`)
 
 ---
 

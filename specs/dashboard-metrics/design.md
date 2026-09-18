@@ -14,7 +14,7 @@
 
 Existing gate: `src/app/(app)/dashboard/layout.tsx` — `allowedRoles={['admin']}`.
 
-Replace stub page with thin server container composing `domains/metrics/presentation/DashboardView.tsx`.
+Thin server container in `src/app/(app)/dashboard/page.tsx` composes `domains/metrics/presentation/DashboardView.tsx`.
 
 ---
 
@@ -173,6 +173,13 @@ Update `docs/database-schema.md` via implementer after migration (harness conven
 | Settings | `merchants` |
 
 Prefer bounded queries with `created_at` indexes from schema. For MTD charts, bucket by day in application layer from raw rows or SQL `date_trunc`.
+
+### Period timezone (OQ-2 locked)
+
+- **Constant:** `DASHBOARD_TIMEZONE = "America/Caracas"` in `domains/metrics/domain/entities.ts` (shared with period-bound helpers).
+- **Bounds:** `resolvePeriodBounds(period, now, timeZone?)` computes start/end instants for **today**, **last 7 days** (inclusive local days), and **month to date** (calendar month in Caracas).
+- **Chart keys:** Daily series keys (`YYYY-MM-DD`) use the same zone so Waste % and waste-log history “today” align for staff reviewing the floor list vs dashboard tiles.
+- **Future:** When `merchants.timezone` exists, inject merchant IANA id instead of the constant (single migration path for dashboard + waste logging).
 
 ---
 

@@ -83,12 +83,22 @@
     {
       "id": "operational-waste-logging",
       "title": "Operational Waste Logging (Registro de merma)",
-      "status": "review_pending",
+      "status": "done",
       "verification": "automated",
-      "notes": "Implementation complete 2026-09-16. Vitest 190/190, tsc green. Migration applied locally. Manual smoke: AC-1 grill_master + AC-2 waiter pass 2026-09-16 (QA emails in progress journal). AC-9 cross-tenant still deferred; leader may close if acceptable.",
+      "notes": "Done 2026-09-16. Reviewer pass_with_notes. Vitest 190/190, tsc green. Manual AC-1 grill_master + AC-2 waiter + AC-9 cross-tenant (human). Operational day America/Caracas.",
       "spec": "specs/operational-waste-logging/",
       "spec_path": "specs/operational-waste-logging/",
       "progress_path": "progress/operational-waste-logging.md"
+    },
+    {
+      "id": "dashboard-metrics",
+      "title": "Metrics & Analytics Dashboard (Financial + Operational)",
+      "status": "review_pending",
+      "verification": "automated",
+      "notes": "Implementation complete 2026-09-16. Vitest 204/204, tsc green. Period TZ America/Caracas (OQ-2 deviation). Amicro npm CLI had no bin — mono charts vendored manually. Manual AC-6/10/11/12 smoke pending human.",
+      "spec": "specs/dashboard-metrics/",
+      "spec_path": "specs/dashboard-metrics/",
+      "progress_path": "progress/dashboard-metrics.md"
     }
   ]
 }

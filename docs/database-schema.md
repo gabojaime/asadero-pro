@@ -135,6 +135,18 @@ ALTER TABLE inventory_movements
 
 Admin-only RLS on `menu_item_costing`; `recipe_ingredients` writes admin-only (tenant read for all roles). Order completion deduction uses SECURITY DEFINER RPC (waiter/admin).
 
+**Dashboard metrics** (`20260916210000_dashboard_metrics.sql`):
+
+```sql
+ALTER TABLE merchants
+  ADD COLUMN monthly_fixed_overhead DECIMAL(12, 2) NULL,
+  ADD COLUMN seating_table_count INT NULL;
+
+ALTER TABLE table_sessions_log ADD COLUMN order_id UUID NULL REFERENCES orders(id);
+CREATE UNIQUE INDEX idx_table_sessions_order_unique ON table_sessions_log (order_id) WHERE order_id IS NOT NULL;
+-- complete_order_and_deduct_inventory inserts dine_in table_sessions_log (idempotent on order_id)
+```
+
 **Operational waste logging** (`20260916160000_operational_waste_logging.sql`):
 
 ```sql

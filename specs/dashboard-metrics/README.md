@@ -4,7 +4,7 @@
 
 Admins need a single **command center** (`/dashboard`) to decide this week: whether food cost is drifting above the 30–35% band, which meat cuts fund fixed costs, if grill service times risk dry meat, when to run Tue/Wed promotions, and whether waste or purchasing needs correction.
 
-The route exists as a stub (`src/app/(app)/dashboard/page.tsx`). `src/domains/metrics/` is scaffolded but empty. Business requirements live in [docs/business/mvp-features-spec.md](../../docs/business/mvp-features-spec.md) §6 and [docs/metrics.md](../../docs/metrics.md).
+Admin route **`/dashboard`** (RSC + client chart islands) and bounded context **`src/domains/metrics/`** implement this spec. Business requirements live in [docs/business/mvp-features-spec.md](../../docs/business/mvp-features-spec.md) §6 and [docs/metrics.md](../../docs/metrics.md).
 
 ## Goals
 
@@ -39,7 +39,7 @@ The route exists as a stub (`src/app/(app)/dashboard/page.tsx`). `src/domains/me
 
 ## In scope
 
-- Period selector: **Today**, **Last 7 days**, **Month to date** (calendar month, tenant timezone — default `America/Mexico_City` until merchant timezone exists).
+- Period selector: **Today**, **Last 7 days**, **Month to date** (calendar boundaries in **`America/Caracas`**, aligned with [operational-waste-logging](../operational-waste-logging/) calendar day until `merchants.timezone` exists — locked OQ-2).
 - Financial KPIs: Food Cost %, contribution by meat plate, break-even progress.
 - Operational KPIs: Waste % (when data exists), average ticket, ticket time (kitchen), table session intensity (dead-hour signal), table turnover.
 - Schema extension: `merchants.monthly_fixed_overhead`, `merchants.seating_table_count`; populate `table_sessions_log` on `dine_in` order completion.
@@ -73,7 +73,7 @@ After implementation, align [docs/metrics.md](../../docs/metrics.md) Food Cost %
   "title": "Metrics & Analytics Dashboard (Financial + Operational)",
   "status": "pending",
   "verification": "automated",
-  "notes": "Spec ready for human approval. Vitest for domain formulas; manual UI/RLS/charts.",
+  "notes": "OQ-2 locked: America/Caracas period bounds (aligned with waste-log calendar day). Vitest domain formulas; manual UI/RLS/charts.",
   "spec": "specs/dashboard-metrics/",
   "spec_path": "specs/dashboard-metrics/",
   "progress_path": "progress/dashboard-metrics.md"
