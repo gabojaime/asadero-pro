@@ -1,19 +1,32 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import { buildDashboardSnapshot } from "@/domains/metrics/application/use-cases";
 import { resolvePeriodBounds } from "@/domains/metrics/domain/period-bounds";
 import { parseDashboardPeriod } from "@/domains/metrics/domain/validations";
 import { createMetricsReadRepository } from "@/domains/metrics/infrastructure/supabase-metrics-read-repo";
+import { DashboardPageSkeleton } from "@/domains/metrics/presentation/dashboard-page-skeleton";
 import { DashboardView } from "@/domains/metrics/presentation/DashboardView";
-import { getServerSessionProfile } from "@/domains/auth/infrastructure/session-profile-server";
+import { requireServerSessionProfile } from "@/domains/auth/infrastructure/session-profile-server";
 import { createClient } from "@/shared/infrastructure/supabase/server";
-import { redirect } from "next/navigation";
 
 type DashboardPageProps = {
   searchParams: Promise<{ period?: string }>;
 };
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const profile = await getServerSessionProfile();
-  if (!profile?.merchantId || profile.role !== "admin") {
+export default function DashboardPage({ searchParams }: DashboardPageProps) {
+  return (
+    <Suspense fallback={<DashboardPageSkeleton />}>
+      <DashboardPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function DashboardPageContent({ searchParams }: DashboardPageProps) {
+  await connection();
+
+  const profile = await requireServerSessionProfile();
+  if (profile.role !== "admin") {
     redirect("/orders");
   }
 

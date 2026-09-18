@@ -82,3 +82,15 @@
 **Verification:** Chrome DevTools @ 375px and 435px — `documentElement.scrollWidth === clientWidth` (no page-level horizontal scroll). Heatmap may scroll horizontally inside its card only.
 
 **Notes:** Feature remains `review_pending`; not marked done.
+
+## 2026-09-18 — implementer
+
+**Task:** Fix Next.js `blocking-prerender-dynamic` console error on `/dashboard`.
+
+**Changes:**
+- `src/app/(app)/dashboard/page.tsx` — sync page shell + `<Suspense>` around async `DashboardPageContent`; `connection()` before session/metrics fetch (same pattern as `ProtectedAppShell` / `GuestSessionGate`)
+- `src/domains/metrics/presentation/dashboard-page-skeleton.tsx` — DESIGN.md-compliant loading fallback (metric tiles + chart skeletons)
+
+**Verification:** Client nav `/orders` → `/dashboard` and hard reload; browser console clean; dev server log no longer prints `blocking-prerender-dynamic` for `/dashboard`.
+
+**Notes:** Sibling `(app)` pages delegate to client views and avoid duplicate server `cookies()` access; only dashboard RSC loader needed this Suspense split.
