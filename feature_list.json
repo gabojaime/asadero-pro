@@ -99,6 +99,17 @@
       "spec": "specs/dashboard-metrics/",
       "spec_path": "specs/dashboard-metrics/",
       "progress_path": "progress/dashboard-metrics.md"
+    },
+    {
+      "id": "menu-starter-catalog",
+      "title": "Opt-in starter menu catalog on empty /menu",
+      "status": "done",
+      "verification": "automated",
+      "notes": "Done 2026-09-18. Reviewer pass_with_notes. Human smoke passed (empty /menu starter CTA + load 14 items). Vitest 221/221, tsc green. Residual L3/L4/menu-only/re-seed accepted by human close.",
+      "spec": "specs/menu-starter-catalog/",
+      "spec_path": "specs/menu-starter-catalog/",
+      "progress_path": "progress/menu-starter-catalog.md",
+      "depends_on": ["menu-items-crud", "raw-materials-inventory"]
     }
   ]
 }
