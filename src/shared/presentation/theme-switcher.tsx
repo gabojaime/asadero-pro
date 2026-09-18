@@ -1,78 +1,63 @@
 "use client";
 
-import { Button } from "@/shared/presentation/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/shared/presentation/ui/dropdown-menu";
-import { Laptop, Moon, Sun } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { Label } from "@/shared/presentation/ui/label";
+import { Switch } from "@/shared/presentation/ui/switch";
+import { useSidebar } from "@/shared/presentation/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/presentation/ui/tooltip";
 
-const ThemeSwitcher = () => {
+export function ThemeSwitcher() {
+  const switchId = useId();
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const { state, isMobile } = useSidebar();
 
-  // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return null;
+  const isDark = mounted && resolvedTheme === "dark";
+  const isIconCollapsed = !isMobile && state === "collapsed";
+
+  const handleCheckedChange = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light");
+  };
+
+  const switchControl = (
+    <Switch
+      id={switchId}
+      checked={isDark}
+      onCheckedChange={handleCheckedChange}
+      disabled={!mounted}
+      aria-label={isIconCollapsed ? "Modo oscuro" : undefined}
+    />
+  );
+
+  if (isIconCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex justify-center">{switchControl}</div>
+        </TooltipTrigger>
+        <TooltipContent side="right">Modo oscuro</TooltipContent>
+      </Tooltip>
+    );
   }
 
-  const ICON_SIZE = 16;
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size={"sm"}>
-          {theme === "light" ? (
-            <Sun
-              key="light"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
-          ) : theme === "dark" ? (
-            <Moon
-              key="dark"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
-          ) : (
-            <Laptop
-              key="system"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-content" align="start">
-        <DropdownMenuRadioGroup
-          value={theme}
-          onValueChange={(e) => setTheme(e)}
-        >
-          <DropdownMenuRadioItem className="flex gap-2" value="light">
-            <Sun size={ICON_SIZE} className="text-muted-foreground" />{" "}
-            <span>Light</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="dark">
-            <Moon size={ICON_SIZE} className="text-muted-foreground" />{" "}
-            <span>Dark</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="system">
-            <Laptop size={ICON_SIZE} className="text-muted-foreground" />{" "}
-            <span>System</span>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center justify-between gap-3">
+      <Label
+        htmlFor={switchId}
+        className="cursor-pointer text-sm font-normal text-muted-foreground"
+      >
+        Modo oscuro
+      </Label>
+      {switchControl}
+    </div>
   );
-};
-
-export { ThemeSwitcher };
+}

@@ -21,6 +21,7 @@ import { ROLE_LABELS } from "@/domains/auth/domain/role-labels";
 import { useSession } from "@/domains/auth/presentation/providers/session-provider";
 import { useSignOut } from "@/domains/auth/infrastructure/query-adapters";
 import { AsaderoLogo } from "@/shared/presentation/asadero-logo";
+import { ThemeSwitcher } from "@/shared/presentation/theme-switcher";
 import { Button } from "@/shared/presentation/ui/button";
 import {
   Sidebar,
@@ -198,6 +199,7 @@ export function AppSidebar() {
           </p>
         </div>
         <SidebarLogoutButton />
+        <ThemeSwitcher />
       </SidebarFooter>
     </Sidebar>
   );
