@@ -97,6 +97,35 @@ export function createMenuItemRepository(
       return mapMenuItemRow(data);
     },
 
+    async createMany(inputs) {
+      if (inputs.length === 0) {
+        return [];
+      }
+
+      const rows = inputs.map((input) => ({
+        merchant_id: input.merchantId,
+        name: input.name,
+        price: input.price,
+        item_kind: input.itemKind,
+        protein_group: input.proteinGroup,
+        weight_label: input.weightLabel,
+        is_active: true,
+      }));
+
+      const { data, error } = await supabase
+        .from("menu_items")
+        .insert(rows)
+        .select(
+          "id, merchant_id, name, price, item_kind, protein_group, weight_label, is_active, created_at",
+        );
+
+      if (error) {
+        mapPostgresError(error);
+      }
+
+      return (data ?? []).map(mapMenuItemRow);
+    },
+
     async update(id, input: UpdateMenuItemInput) {
       const { data, error } = await supabase
         .from("menu_items")

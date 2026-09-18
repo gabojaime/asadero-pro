@@ -2,12 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
 import type { MenuItem } from "../domain/entities";
 import type { MenuItemRepository } from "../domain/repository";
+import type { CostingRepository } from "@/domains/waste/domain/repository";
+import {
+  STARTER_MENU_ITEMS,
+  normalizeMenuItemName,
+} from "../domain/starter-catalog";
+import type { CreateMenuItemPayload } from "../domain/repository";
 import {
   assertItemKindImmutable,
   createMenuItem,
   deactivateMenuItem,
   listMenuItems,
   reactivateMenuItem,
+  seedStarterMenuCatalog,
   updateMenuItem,
 } from "./use-cases";
 
@@ -46,6 +53,7 @@ function createRepository(
     listByMerchant: vi.fn().mockResolvedValue([baseItem]),
     getById: vi.fn().mockResolvedValue(baseItem),
     create: vi.fn().mockResolvedValue(baseItem),
+    createMany: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(baseItem),
     setActive: vi.fn().mockResolvedValue({ ...baseItem, isActive: false }),
     ...overrides,
@@ -173,6 +181,300 @@ describe("deactivateMenuItem and reactivateMenuItem", () => {
 
     expect(repository.setActive).toHaveBeenCalledWith("item-1", true);
     expect(result.isActive).toBe(true);
+  });
+});
+
+function createCostingRepository(
+  overrides: Partial<CostingRepository> = {},
+): CostingRepository {
+  return {
+    listMeatPlateCosting: vi.fn(),
+    listProteinInventoryMaterials: vi.fn().mockResolvedValue([]),
+    upsertWastePct: vi.fn(),
+    ensureInferredRecipeIngredient: vi.fn().mockResolvedValue(false),
+    ensureDefaultWastePctIfMissing: vi.fn().mockResolvedValue(false),
+    updateTargetFoodCostPct: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe("seedStarterMenuCatalog", () => {
+  it("rejects non-admin users", async () => {
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+    });
+    const costingRepository = createCostingRepository();
+
+    await expect(
+      seedStarterMenuCatalog(waiterProfile, menuRepository, costingRepository),
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    expect(menuRepository.listByMerchant).not.toHaveBeenCalled();
+  });
+
+  it("inserts all starter items when catalog is empty", async () => {
+    const createdItems = STARTER_MENU_ITEMS.map((item, index) => ({
+      ...baseItem,
+      id: `item-${index}`,
+      name: item.name,
+      itemKind: item.itemKind,
+      proteinGroup: item.proteinGroup,
+      weightLabel: item.weightLabel,
+      price: item.price,
+    }));
+
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue(createdItems),
+    });
+    const costingRepository = createCostingRepository();
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.insertedCount).toBe(STARTER_MENU_ITEMS.length);
+    expect(result.skippedCount).toBe(0);
+    expect(menuRepository.createMany).toHaveBeenCalledWith(
+      STARTER_MENU_ITEMS.map((item) => ({
+        name: item.name,
+        price: item.price,
+        itemKind: item.itemKind,
+        proteinGroup: item.proteinGroup,
+        weightLabel: item.weightLabel,
+        merchantId: "merchant-1",
+      })),
+    );
+    expect(costingRepository.ensureInferredRecipeIngredient).toHaveBeenCalledTimes(
+      9,
+    );
+    expect(result.recipesSkippedCount).toBe(9);
+  });
+
+  it("skips all definitions when names already exist", async () => {
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue(
+        STARTER_MENU_ITEMS.map((item, index) => ({
+          ...baseItem,
+          id: `existing-${index}`,
+          name: item.name,
+        })),
+      ),
+    });
+    const costingRepository = createCostingRepository();
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.insertedCount).toBe(0);
+    expect(result.skippedCount).toBe(STARTER_MENU_ITEMS.length);
+    expect(menuRepository.createMany).not.toHaveBeenCalled();
+  });
+
+  it("attaches recipes and costing when protein materials exist", async () => {
+    const meatPlates = STARTER_MENU_ITEMS.filter(
+      (item) => item.itemKind === "meat_plate",
+    );
+    const createdItems = meatPlates.map((item, index) => ({
+      ...baseItem,
+      id: `meat-${index}`,
+      name: item.name,
+      itemKind: item.itemKind as typeof baseItem.itemKind,
+      proteinGroup: item.proteinGroup,
+      weightLabel: item.weightLabel,
+      price: item.price,
+    }));
+
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue(createdItems),
+    });
+
+    const materials = [
+      { id: "rm-beef", name: "Carne", unitCost: 10 },
+      { id: "rm-pork", name: "Cochino", unitCost: 9 },
+      { id: "rm-chicken", name: "Pollo", unitCost: 8 },
+    ];
+
+    const ensureRecipe = vi.fn().mockResolvedValue(true);
+    const ensureCosting = vi.fn().mockResolvedValue(true);
+
+    const costingRepository = createCostingRepository({
+      listProteinInventoryMaterials: vi.fn().mockResolvedValue(materials),
+      ensureInferredRecipeIngredient: ensureRecipe,
+      ensureDefaultWastePctIfMissing: ensureCosting,
+    });
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.recipesAttachedCount).toBe(meatPlates.length);
+    expect(result.costingAttachedCount).toBe(meatPlates.length);
+    expect(result.recipesSkippedCount).toBe(0);
+    expect(result.missingProteinGroups).toEqual([]);
+    expect(ensureRecipe).toHaveBeenCalledTimes(meatPlates.length);
+    expect(ensureCosting).toHaveBeenCalledTimes(meatPlates.length);
+  });
+
+  it("loads menu only when no protein materials exist", async () => {
+    const createdItems = STARTER_MENU_ITEMS.map((item, index) => ({
+      ...baseItem,
+      id: `item-${index}`,
+      name: item.name,
+      itemKind: item.itemKind,
+      proteinGroup: item.proteinGroup,
+      weightLabel: item.weightLabel,
+      price: item.price,
+    }));
+
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue(createdItems),
+    });
+    const costingRepository = createCostingRepository({
+      listProteinInventoryMaterials: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.insertedCount).toBe(STARTER_MENU_ITEMS.length);
+    expect(result.recipesAttachedCount).toBe(0);
+    expect(result.recipesSkippedCount).toBe(9);
+    expect(result.missingProteinGroups.sort()).toEqual([
+      "beef",
+      "chicken",
+      "pork",
+    ]);
+  });
+
+  it("partially attaches when only some proteins exist", async () => {
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockImplementation(
+        async (inputs: CreateMenuItemPayload[]) =>
+          inputs.map((input, index) => ({
+            ...baseItem,
+            id: `new-${index}`,
+            name: input.name,
+            itemKind: input.itemKind,
+            proteinGroup: input.proteinGroup,
+            weightLabel: input.weightLabel,
+            price: input.price,
+          })),
+      ),
+    });
+
+    const costingRepository = createCostingRepository({
+      listProteinInventoryMaterials: vi.fn().mockResolvedValue([
+        { id: "rm-beef", name: "Carne", unitCost: 10 },
+      ]),
+      ensureInferredRecipeIngredient: vi.fn().mockResolvedValue(true),
+      ensureDefaultWastePctIfMissing: vi.fn().mockResolvedValue(true),
+    });
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.recipesAttachedCount).toBe(3);
+    expect(result.missingProteinGroups.sort()).toEqual(["chicken", "pork"]);
+  });
+
+  it("does not call recipe helpers for drinks and sides", async () => {
+    const drinkSideOnly = STARTER_MENU_ITEMS.filter(
+      (item) => item.itemKind !== "meat_plate",
+    );
+    const createdItems = drinkSideOnly.map((item, index) => ({
+      ...baseItem,
+      id: `ds-${index}`,
+      name: item.name,
+      itemKind: item.itemKind,
+      proteinGroup: item.proteinGroup,
+      weightLabel: item.weightLabel,
+      price: item.price,
+    }));
+
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue(
+        STARTER_MENU_ITEMS.filter((item) => item.itemKind === "meat_plate").map(
+          (item, index) => ({
+            ...baseItem,
+            id: `existing-meat-${index}`,
+            name: item.name,
+            itemKind: item.itemKind,
+            proteinGroup: item.proteinGroup,
+            weightLabel: item.weightLabel,
+          }),
+        ),
+      ),
+      createMany: vi.fn().mockResolvedValue(createdItems),
+    });
+
+    const ensureRecipe = vi.fn().mockResolvedValue(true);
+    const costingRepository = createCostingRepository({
+      ensureInferredRecipeIngredient: ensureRecipe,
+    });
+
+    await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(ensureRecipe).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(menuRepository.createMany).mock.calls[0][0].every(
+        (row) => row.itemKind !== "meat_plate",
+      ),
+    ).toBe(true);
+  });
+
+  it("matches existing names case-insensitively", async () => {
+    const menuRepository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([
+        {
+          ...baseItem,
+          name: "  beef 1 kg  ",
+        },
+      ]),
+      createMany: vi.fn().mockImplementation(
+        async (inputs: CreateMenuItemPayload[]) =>
+          inputs.map((input, index) => ({
+            ...baseItem,
+            id: `new-${index}`,
+            name: input.name,
+          })),
+      ),
+    });
+    const costingRepository = createCostingRepository();
+
+    const result = await seedStarterMenuCatalog(
+      adminProfile,
+      menuRepository,
+      costingRepository,
+    );
+
+    expect(result.skippedCount).toBeGreaterThanOrEqual(1);
+    const payload = vi.mocked(menuRepository.createMany).mock.calls[0]?.[0];
+    expect(
+      payload?.some(
+        (row) => normalizeMenuItemName(row.name) === normalizeMenuItemName("Beef 1 kg"),
+      ),
+    ).toBe(false);
   });
 });
 

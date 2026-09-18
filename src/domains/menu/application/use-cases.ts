@@ -1,4 +1,7 @@
 import type { SessionProfile } from "@/domains/auth/domain/entities";
+import type { ProteinGroup } from "@/domains/orders/domain/entities";
+import type { CostingRepository } from "@/domains/waste/domain/repository";
+import { inferRecipeLinkForMeatPlate } from "@/domains/waste/domain/protein-inventory-link";
 import type {
   CreateMenuItemInput,
   ListMenuItemsFilters,
@@ -9,9 +12,23 @@ import type {
 import { MenuItemError } from "../domain/errors";
 import type { MenuItemRepository } from "../domain/repository";
 import {
+  STARTER_MENU_ITEMS,
+  normalizeMenuItemName,
+} from "../domain/starter-catalog";
+import {
   parseCreateMenuItemInput,
   validateUpdateForKind,
 } from "../domain/validations";
+
+export type SeedStarterMenuCatalogResult = {
+  items: MenuItem[];
+  insertedCount: number;
+  skippedCount: number;
+  recipesAttachedCount: number;
+  costingAttachedCount: number;
+  recipesSkippedCount: number;
+  missingProteinGroups: ProteinGroup[];
+};
 
 function assertAdmin(profile: SessionProfile): void {
   if (profile.role !== "admin") {
@@ -144,4 +161,96 @@ export function assertItemKindImmutable(
       "El tipo de ítem no se puede cambiar después de crearlo.",
     );
   }
+}
+
+export async function seedStarterMenuCatalog(
+  profile: SessionProfile,
+  menuRepository: MenuItemRepository,
+  costingRepository: CostingRepository,
+): Promise<SeedStarterMenuCatalogResult> {
+  assertAdmin(profile);
+
+  const merchantId = profile.merchantId!;
+  const existing = await menuRepository.listByMerchant(merchantId, {
+    activeOnly: false,
+  });
+  const existingNames = new Set(
+    existing.map((item) => normalizeMenuItemName(item.name)),
+  );
+
+  const toCreate = STARTER_MENU_ITEMS.filter(
+    (item) => !existingNames.has(normalizeMenuItemName(item.name)),
+  );
+
+  const inserted =
+    toCreate.length === 0
+      ? []
+      : await menuRepository.createMany(
+          toCreate.map((item) => ({
+            name: item.name,
+            price: item.price,
+            itemKind: item.itemKind,
+            proteinGroup: item.proteinGroup,
+            weightLabel: item.weightLabel,
+            merchantId,
+          })),
+        );
+
+  const proteinMaterials =
+    await costingRepository.listProteinInventoryMaterials(merchantId);
+
+  let recipesAttachedCount = 0;
+  let costingAttachedCount = 0;
+  let recipesSkippedCount = 0;
+  const missingProteinGroups = new Set<ProteinGroup>();
+
+  for (const item of inserted) {
+    if (item.itemKind !== "meat_plate" || item.proteinGroup == null) {
+      continue;
+    }
+
+    const canAttachRecipe =
+      inferRecipeLinkForMeatPlate({
+        proteinGroup: item.proteinGroup,
+        weightLabel: item.weightLabel,
+        materials: proteinMaterials,
+      }) != null;
+
+    const recipeInserted =
+      await costingRepository.ensureInferredRecipeIngredient({
+        merchantId,
+        menuItemId: item.id,
+        proteinGroup: item.proteinGroup,
+        weightLabel: item.weightLabel,
+      });
+
+    if (!canAttachRecipe || !recipeInserted) {
+      recipesSkippedCount += 1;
+      missingProteinGroups.add(item.proteinGroup);
+      continue;
+    }
+
+    recipesAttachedCount += 1;
+
+    const costingInserted =
+      await costingRepository.ensureDefaultWastePctIfMissing({
+        merchantId,
+        menuItemId: item.id,
+        proteinGroup: item.proteinGroup,
+      });
+
+    if (costingInserted) {
+      costingAttachedCount += 1;
+    }
+  }
+
+  return {
+    items: sortMenuItems(inserted),
+    insertedCount: inserted.length,
+    skippedCount: STARTER_MENU_ITEMS.length - inserted.length,
+    recipesAttachedCount,
+    costingAttachedCount,
+    recipesSkippedCount,
+    missingProteinGroups: [...missingProteinGroups],
+  };
 }

@@ -45,6 +45,23 @@ export function findInventoryMaterialForProteinGroup(
   );
 }
 
+export type ProteinInsumoAvailability = {
+  beef: boolean;
+  pork: boolean;
+  chicken: boolean;
+};
+
+export function buildProteinInsumoAvailability(
+  materials: InventoryMaterialRef[],
+): ProteinInsumoAvailability {
+  return {
+    beef: findInventoryMaterialForProteinGroup("beef", materials) != null,
+    pork: findInventoryMaterialForProteinGroup("pork", materials) != null,
+    chicken:
+      findInventoryMaterialForProteinGroup("chicken", materials) != null,
+  };
+}
+
 export function inferRecipeLinkForMeatPlate(params: {
   proteinGroup: ProteinGroup | null;
   weightLabel: string | null;

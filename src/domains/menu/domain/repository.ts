@@ -16,6 +16,7 @@ export interface MenuItemRepository {
   ): Promise<MenuItem[]>;
   getById(id: string): Promise<MenuItem | null>;
   create(input: CreateMenuItemPayload): Promise<MenuItem>;
+  createMany(inputs: CreateMenuItemPayload[]): Promise<MenuItem[]>;
   update(id: string, input: UpdateMenuItemInput): Promise<MenuItem>;
   setActive(id: string, isActive: boolean): Promise<MenuItem>;
 }

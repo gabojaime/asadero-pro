@@ -29,7 +29,12 @@ export interface CostingRepository {
     menuItemId: string;
     proteinGroup: ProteinGroup | null;
     weightLabel: string | null;
-  }): Promise<void>;
+  }): Promise<boolean>;
+  ensureDefaultWastePctIfMissing(params: {
+    merchantId: string;
+    menuItemId: string;
+    proteinGroup: ProteinGroup;
+  }): Promise<boolean>;
   updateTargetFoodCostPct(params: {
     merchantId: string;
     targetFoodCostPct: number;

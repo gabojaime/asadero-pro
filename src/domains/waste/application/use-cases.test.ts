@@ -69,7 +69,12 @@ function createFakeCostingRepo(
         wastePct = params.wastePct;
       }
     },
-    async ensureInferredRecipeIngredient() {},
+    async ensureInferredRecipeIngredient() {
+      return false;
+    },
+    async ensureDefaultWastePctIfMissing() {
+      return false;
+    },
     async updateTargetFoodCostPct(params) {
       targetFoodCostPct = params.targetFoodCostPct;
       return targetFoodCostPct;

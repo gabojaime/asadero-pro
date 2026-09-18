@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/shared/infrastructure/database/supabase.types";
 import type { ProteinGroup } from "@/domains/orders/domain/entities";
+import { defaultWastePctForProteinGroup } from "@/domains/menu/domain/starter-catalog";
 import {
   inferRecipeLinkForMeatPlate,
   type InventoryMaterialRef,
@@ -74,7 +75,8 @@ async function fetchProteinInventoryMaterials(
     .from("raw_materials_inventory")
     .select("id, name, unit_cost")
     .eq("merchant_id", merchantId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("unit_of_measure", "kilogram");
 
   if (error) {
     throw error;
@@ -161,7 +163,7 @@ export function createCostingRepository(
       }
 
       if (existing) {
-        return;
+        return false;
       }
 
       const materials = await fetchProteinInventoryMaterials(
@@ -176,7 +178,7 @@ export function createCostingRepository(
       });
 
       if (!inferred) {
-        return;
+        return false;
       }
 
       const { error: insertError } = await supabase
@@ -190,6 +192,42 @@ export function createCostingRepository(
       if (insertError) {
         mapPostgresError(insertError);
       }
+
+      return true;
+    },
+
+    async ensureDefaultWastePctIfMissing({
+      merchantId,
+      menuItemId,
+      proteinGroup,
+    }) {
+      const { data: existing, error: existingError } = await supabase
+        .from("menu_item_costing")
+        .select("menu_item_id")
+        .eq("menu_item_id", menuItemId)
+        .maybeSingle();
+
+      if (existingError) {
+        mapPostgresError(existingError);
+      }
+
+      if (existing) {
+        return false;
+      }
+
+      const { error: insertError } = await supabase
+        .from("menu_item_costing")
+        .insert({
+          merchant_id: merchantId,
+          menu_item_id: menuItemId,
+          waste_pct: defaultWastePctForProteinGroup(proteinGroup),
+        });
+
+      if (insertError) {
+        mapPostgresError(insertError);
+      }
+
+      return true;
     },
 
     async upsertWastePct({ merchantId, menuItemId, wastePct }) {
