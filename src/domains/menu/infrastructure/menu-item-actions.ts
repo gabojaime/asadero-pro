@@ -6,8 +6,12 @@ import {
   deactivateMenuItem,
   listMenuItems,
   reactivateMenuItem,
+  seedStarterMenuCatalog,
   updateMenuItem,
+  type SeedStarterMenuCatalogResult,
 } from "@/domains/menu/application/use-cases";
+import { createCostingRepository } from "@/domains/waste/infrastructure/supabase-costing-repo";
+import { buildProteinInsumoAvailability } from "@/domains/waste/domain/protein-inventory-link";
 import type {
   CreateMenuItemInput,
   ListMenuItemsFilters,
@@ -148,4 +152,73 @@ export async function reactivateMenuItemAction(id: string) {
   });
 }
 
-export type { ActionFailure, MenuItemDto };
+type SeedStarterMenuCatalogDto = Omit<
+  SeedStarterMenuCatalogResult,
+  "items"
+> & {
+  items: MenuItemDto[];
+};
+
+async function withMenuAndCosting<T>(
+  handler: (
+    profile: NonNullable<Awaited<ReturnType<typeof getServerSessionProfile>>>,
+    menuRepository: ReturnType<typeof createMenuItemRepository>,
+    costingRepository: ReturnType<typeof createCostingRepository>,
+  ) => Promise<T>,
+): Promise<T | ActionFailure> {
+  const profile = await getServerSessionProfile();
+
+  if (!profile) {
+    return {
+      success: false,
+      code: "not_authenticated",
+      message: "Debes iniciar sesión para continuar.",
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    const menuRepository = createMenuItemRepository(supabase);
+    const costingRepository = createCostingRepository(supabase);
+    return await handler(profile, menuRepository, costingRepository);
+  } catch (error) {
+    return mapError(error);
+  }
+}
+
+export async function seedStarterMenuCatalogAction() {
+  return withMenuAndCosting(async (profile, menuRepository, costingRepository) => {
+    const result = await seedStarterMenuCatalog(
+      profile,
+      menuRepository,
+      costingRepository,
+    );
+    return {
+      success: true as const,
+      ...result,
+      items: result.items.map(serializeMenuItem),
+    } satisfies { success: true } & SeedStarterMenuCatalogDto;
+  });
+}
+
+export async function listProteinInsumoAvailabilityAction() {
+  return withMenuAndCosting(async (profile, _menuRepository, costingRepository) => {
+    if (profile.role !== "admin" || !profile.merchantId) {
+      throw new MenuItemError(
+        "forbidden",
+        "Solo los administradores pueden consultar insumos de proteína.",
+      );
+    }
+
+    const materials = await costingRepository.listProteinInventoryMaterials(
+      profile.merchantId,
+    );
+
+    return {
+      success: true as const,
+      availability: buildProteinInsumoAvailability(materials),
+    };
+  });
+}
+
+export type { ActionFailure, MenuItemDto, SeedStarterMenuCatalogDto };

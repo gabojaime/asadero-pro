@@ -13,10 +13,14 @@ import {
   deactivateMenuItemAction,
   listMenuItemsAction,
   reactivateMenuItemAction,
+  seedStarterMenuCatalogAction,
+  listProteinInsumoAvailabilityAction,
   updateMenuItemAction,
   type ActionFailure,
   type MenuItemDto,
+  type SeedStarterMenuCatalogDto,
 } from "@/domains/menu/infrastructure/menu-item-actions";
+import type { ProteinInsumoAvailability } from "@/domains/waste/domain/protein-inventory-link";
 
 export function menuCatalogQueryKey(
   merchantId: string,
@@ -62,10 +66,11 @@ function unwrapActionResult<T extends { success: true }>(
 export function useMenuCatalog(
   merchantId: string | null,
   filters?: ListMenuItemsFilters,
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: menuCatalogQueryKey(merchantId ?? "unknown", filters),
-    enabled: Boolean(merchantId),
+    enabled: Boolean(merchantId) && (options?.enabled ?? true),
     queryFn: async () => {
       const result = await listMenuItemsAction(filters);
       return unwrapActionResult(result).items;
@@ -143,4 +148,42 @@ export function useReactivateMenuItem(merchantId: string | null) {
   });
 }
 
-export type { MenuItemDto };
+export function proteinInsumoAvailabilityQueryKey(merchantId: string) {
+  return ["protein-insumo-availability", merchantId] as const;
+}
+
+export function useProteinInsumoAvailability(
+  merchantId: string | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: proteinInsumoAvailabilityQueryKey(merchantId ?? "unknown"),
+    enabled: Boolean(merchantId) && (options?.enabled ?? true),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const result = await listProteinInsumoAvailabilityAction();
+      return unwrapActionResult(result).availability as ProteinInsumoAvailability;
+    },
+  });
+}
+
+export function useSeedStarterMenuCatalog(merchantId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const result = await seedStarterMenuCatalogAction();
+      return unwrapActionResult(result) as { success: true } & SeedStarterMenuCatalogDto;
+    },
+    onSuccess: () => {
+      if (merchantId) {
+        invalidateMenuConsumers(queryClient, merchantId);
+        queryClient.invalidateQueries({
+          queryKey: proteinInsumoAvailabilityQueryKey(merchantId),
+        });
+      }
+    },
+  });
+}
+
+export type { MenuItemDto, SeedStarterMenuCatalogDto };
