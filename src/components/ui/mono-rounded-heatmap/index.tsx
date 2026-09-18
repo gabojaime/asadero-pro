@@ -24,10 +24,11 @@ export function MonoRoundedHeatmapChart({
 
   return (
     <div
-      className="min-h-[290px] w-full overflow-x-auto rounded-xl border border-border p-4"
+      className="min-h-[290px] min-w-0 max-w-full w-full overflow-x-auto rounded-xl border border-border p-4"
       style={{ background: monoSurface(theme) }}
     >
-      <div className="grid grid-cols-[48px_repeat(24,minmax(12px,1fr))] gap-1 text-[10px]">
+      <div className="w-max min-w-full">
+        <div className="grid grid-cols-[40px_repeat(24,minmax(10px,1fr))] gap-1 text-[10px]">
         <div />
         {Array.from({ length: 24 }, (_, hour) => (
           <div key={`h-${hour}`} className="text-center text-muted-foreground">
@@ -58,6 +59,7 @@ export function MonoRoundedHeatmapChart({
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

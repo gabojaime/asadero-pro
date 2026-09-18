@@ -18,7 +18,7 @@ import {
 
 export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-8">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-[28px] font-semibold leading-8 tracking-tight">
@@ -75,26 +75,26 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
           />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <div>
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Tendencia costo de alimentos (%)
             </p>
             <FoodCostTrendChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Margen de contribución por plato
             </p>
             <ContributionRankChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Progreso hacia equilibrio
             </p>
             <BepGaugeChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Ticket promedio diario
             </p>
@@ -142,20 +142,20 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
           />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <div>
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Mix de merma por motivo
             </p>
             <WasteMixChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Mediana diaria en cocina (min)
             </p>
             <TicketTimeTrendChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Horas muertas (dine-in)
             </p>
@@ -164,7 +164,7 @@ export function DashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
             </p>
             <SessionHeatmapChart snapshot={snapshot} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[13px] font-semibold text-muted-foreground">
               Rotación de mesas
             </p>

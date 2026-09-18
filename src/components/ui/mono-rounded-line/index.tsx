@@ -34,7 +34,7 @@ export function MonoRoundedLineChart({
 
   return (
     <div
-      className="min-h-[290px] w-full rounded-xl border border-border p-4"
+      className="min-h-[290px] min-w-0 max-w-full w-full rounded-xl border border-border p-4"
       style={{ background: monoSurface(theme) }}
     >
       <ResponsiveContainer width="100%" height={250}>

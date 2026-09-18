@@ -30,9 +30,9 @@ export async function ProtectedAppShell({
     <SessionProvider initialProfile={profile}>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="min-h-svh w-full">
+        <SidebarInset className="min-h-svh w-full min-w-0">
           <AppShellHeader />
-          <div className="flex w-full flex-1 flex-col gap-6 p-4 md:p-6">
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
             {children}
           </div>
         </SidebarInset>

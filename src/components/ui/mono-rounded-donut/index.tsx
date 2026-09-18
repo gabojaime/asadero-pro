@@ -19,7 +19,7 @@ export function MonoRoundedDonutChart({
 
   return (
     <div
-      className="relative min-h-[290px] w-full rounded-xl border border-border p-4"
+      className="relative min-h-[290px] min-w-0 max-w-full w-full rounded-xl border border-border p-4"
       style={{ background: monoSurface(theme) }}
     >
       {centerLabel ? (
@@ -48,7 +48,7 @@ export function MonoRoundedDonutChart({
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
-      <p className="text-center text-[11px] text-muted-foreground">
+      <p className="text-center text-[11px] text-muted-foreground break-words">
         {data.map((row) => row.label).join(" · ")}
       </p>
     </div>

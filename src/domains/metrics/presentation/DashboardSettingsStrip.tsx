@@ -35,7 +35,7 @@ export function DashboardSettingsStrip({
   return (
     <form
       action={handleSubmit}
-      className="grid gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-[1fr_1fr_auto]"
+      className="grid min-w-0 gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-[1fr_1fr_auto]"
     >
       <div className="space-y-2">
         <Label htmlFor="monthlyFixedOverhead">Overhead fijo mensual (USD)</Label>

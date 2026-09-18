@@ -27,7 +27,7 @@ export function MonoRoundedSparklineChart({
 
   return (
     <div
-      className="min-h-[120px] w-full rounded-xl border border-border p-3"
+      className="min-h-[120px] min-w-0 max-w-full w-full rounded-xl border border-border p-3"
       style={{ background: monoSurface(theme) }}
     >
       <ResponsiveContainer width="100%" height={90}>

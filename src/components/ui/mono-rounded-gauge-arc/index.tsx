@@ -19,7 +19,7 @@ export function MonoRoundedGaugeArc({
 
   return (
     <div
-      className="flex min-h-[290px] flex-col items-center justify-center rounded-xl border border-border p-6"
+      className="flex min-h-[290px] min-w-0 max-w-full w-full flex-col items-center justify-center rounded-xl border border-border p-6"
       style={{ background: monoSurface(theme) }}
     >
       <svg width="220" height="120" viewBox="0 0 220 120" aria-hidden>
