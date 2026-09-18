@@ -1,2 +1,1 @@
-// Placeholder — define application use cases in a future feature.
-export {};
+export { buildDashboardSnapshot } from "./build-dashboard-snapshot";

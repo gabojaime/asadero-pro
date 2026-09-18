@@ -203,24 +203,30 @@ export type Database = {
           address: string | null
           created_at: string
           id: string
+          monthly_fixed_overhead: number | null
           name: string
           phone: string | null
+          seating_table_count: number | null
           target_food_cost_pct: number
         }
         Insert: {
           address?: string | null
           created_at?: string
           id?: string
+          monthly_fixed_overhead?: number | null
           name: string
           phone?: string | null
+          seating_table_count?: number | null
           target_food_cost_pct?: number
         }
         Update: {
           address?: string | null
           created_at?: string
           id?: string
+          monthly_fixed_overhead?: number | null
           name?: string
           phone?: string | null
+          seating_table_count?: number | null
           target_food_cost_pct?: number
         }
         Relationships: []
@@ -456,6 +462,7 @@ export type Database = {
           id: string
           merchant_id: string
           opened_at: string
+          order_id: string | null
           preparation_time_minutes: number
           table_number: number
           ticket_total: number
@@ -466,6 +473,7 @@ export type Database = {
           id?: string
           merchant_id: string
           opened_at: string
+          order_id?: string | null
           preparation_time_minutes: number
           table_number: number
           ticket_total: number
@@ -476,6 +484,7 @@ export type Database = {
           id?: string
           merchant_id?: string
           opened_at?: string
+          order_id?: string | null
           preparation_time_minutes?: number
           table_number?: number
           ticket_total?: number
@@ -486,6 +495,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_sessions_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
