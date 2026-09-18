@@ -37,7 +37,7 @@ async function DashboardPageContent({ searchParams }: DashboardPageProps) {
   const supabase = await createClient();
   const repo = createMetricsReadRepository(supabase);
   const snapshot = await buildDashboardSnapshot(
-    profile.merchantId,
+    profile.merchantId ?? "",
     bounds,
     repo,
   );
