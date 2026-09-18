@@ -9,6 +9,8 @@ import {
   useCompleteOrder,
   useServedOrders,
 } from "@/domains/orders/infrastructure/order-completion-adapters";
+import { useKitchenOrdersRealtime } from "@/domains/orders/infrastructure/query-adapters";
+import { ORDER_COPY } from "@/domains/orders/presentation/copy";
 import { Button } from "@/shared/presentation/ui/button";
 import { Skeleton } from "@/shared/presentation/ui/skeleton";
 
@@ -82,7 +84,12 @@ function ServedOrderRow({
 export function ServedOrdersPanel() {
   const session = useSession();
   const profile = toSessionProfile(session);
-  const servedQuery = useServedOrders(session.merchantId);
+  const { isSubscribed, isReconnecting, isRealtimeDisabled } =
+    useKitchenOrdersRealtime(session.merchantId);
+  const servedQuery = useServedOrders(session.merchantId, {
+    realtimeSubscribed: isSubscribed,
+    realtimeDisabled: isRealtimeDisabled,
+  });
 
   if (!canCompleteOrders(profile.role)) {
     return null;
@@ -97,6 +104,11 @@ export function ServedOrdersPanel() {
         <p className="text-sm text-muted-foreground">
           Completa pedidos listos para descontar insumos del inventario.
         </p>
+        {isReconnecting ? (
+          <p className="mt-2 text-[13px] text-primary">
+            {ORDER_COPY.reconnecting}
+          </p>
+        ) : null}
       </div>
 
       {servedQuery.isLoading ? (

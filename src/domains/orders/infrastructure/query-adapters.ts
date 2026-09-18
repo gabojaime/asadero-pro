@@ -74,7 +74,7 @@ export function useMenuItems(merchantId: string | null) {
   });
 }
 
-const ACTIVE_ORDERS_POLLING_MS = 5000;
+export const ORDERS_POLLING_FALLBACK_MS = 5000;
 
 type ActiveOrdersQueryOptions = {
   realtimeSubscribed?: boolean;
@@ -95,7 +95,7 @@ export function useActiveOrders(
     queryKey: activeOrdersQueryKey(merchantId ?? "unknown"),
     enabled: Boolean(merchantId),
     staleTime: 0,
-    refetchInterval: usePollingFallback ? ACTIVE_ORDERS_POLLING_MS : false,
+    refetchInterval: usePollingFallback ? ORDERS_POLLING_FALLBACK_MS : false,
     queryFn: async () => {
       if (testContext && merchantId) {
         const orders = await listActiveOrders(
@@ -197,12 +197,17 @@ export function useKitchenOrdersRealtime(merchantId: string | null) {
 
     const supabase = createClient();
 
+    const invalidateOrderLists = () => {
+      queryClient.invalidateQueries({
+        queryKey: activeOrdersQueryKey(merchantId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: servedOrdersQueryKey(merchantId),
+      });
+    };
+
     const unsubscribe = subscribeActiveOrders(supabase, merchantId, {
-      onChange: () => {
-        queryClient.invalidateQueries({
-          queryKey: activeOrdersQueryKey(merchantId),
-        });
-      },
+      onChange: invalidateOrderLists,
       onStatusChange: setRealtimeStatus,
     });
 

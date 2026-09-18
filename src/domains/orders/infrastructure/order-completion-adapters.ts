@@ -7,7 +7,11 @@ import type {
   OrderDto,
 } from "@/domains/orders/infrastructure/order-dtos";
 import { useOrdersTestContext } from "@/domains/orders/infrastructure/testing/orders-test-context";
-import { activeOrdersQueryKey, servedOrdersQueryKey } from "./query-adapters";
+import {
+  activeOrdersQueryKey,
+  ORDERS_POLLING_FALLBACK_MS,
+  servedOrdersQueryKey,
+} from "./query-adapters";
 
 function throwActionError(result: ActionFailure): never {
   const error = new Error(result.message);
@@ -67,13 +71,26 @@ function serializeOrderForClient(order: {
   };
 }
 
-export function useServedOrders(merchantId: string | null) {
+type ServedOrdersQueryOptions = {
+  realtimeSubscribed?: boolean;
+  realtimeDisabled?: boolean;
+};
+
+export function useServedOrders(
+  merchantId: string | null,
+  options?: ServedOrdersQueryOptions,
+) {
   const testContext = useOrdersTestContext();
+  const usePollingFallback =
+    !testContext?.disableRealtime &&
+    !options?.realtimeDisabled &&
+    options?.realtimeSubscribed === false;
 
   return useQuery({
     queryKey: servedOrdersQueryKey(merchantId ?? "unknown"),
     enabled: Boolean(merchantId),
     staleTime: 0,
+    refetchInterval: usePollingFallback ? ORDERS_POLLING_FALLBACK_MS : false,
     queryFn: async () => {
       if (testContext && merchantId) {
         const { listServedOrders } = await import(

@@ -198,5 +198,16 @@ describe("order-kitchen-flow integration", () => {
     expect(snapshot.status).toBe("served");
     expect(snapshot.readyAt).not.toBeNull();
     expect(repos.getOrdersSnapshot().filter((order) => order.status === "pending")).toHaveLength(0);
+
+    cleanup();
+    renderWithOrderProviders(<OrderRegistryView />, {
+      profile: waiterProfile,
+      repos,
+      queryClient,
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Completar pedido" }),
+    ).toBeInTheDocument();
   });
 });
