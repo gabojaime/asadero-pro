@@ -70,3 +70,15 @@
 **Task:** Align spec text to **America/Caracas** (OQ-2 locked); README no longer describes stub/empty metrics domain.
 
 **Files:** `specs/dashboard-metrics/{README,requirements,design,tasks}.md`. `feature_list.json` unchanged (review_pending).
+
+## 2026-09-18 — implementer
+
+**Task:** Mobile horizontal overflow fix on `/dashboard` (~375–435px viewports).
+
+**Changes:**
+- `protected-app-shell.tsx`, `DashboardView.tsx`, `DashboardSettingsStrip.tsx` — `min-w-0` / `max-w-full` on shell and chart grid wrappers
+- `src/components/ui/mono-*` — chart shells constrain width; heatmap scrolls inside card via inner `w-max` grid
+
+**Verification:** Chrome DevTools @ 375px and 435px — `documentElement.scrollWidth === clientWidth` (no page-level horizontal scroll). Heatmap may scroll horizontally inside its card only.
+
+**Notes:** Feature remains `review_pending`; not marked done.
