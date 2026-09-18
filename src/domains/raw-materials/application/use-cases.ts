@@ -13,7 +13,17 @@ import {
   parseReceiveStockInput,
   parseUpdateRawMaterialInput,
 } from "../domain/validations";
+import {
+  normalizeRawMaterialName,
+  STARTER_RAW_MATERIALS,
+} from "../domain/starter-catalog";
 import { updateWeightedAverageCost } from "../domain/weighted-average-cost";
+
+export type SeedStarterRawMaterialsResult = {
+  items: RawMaterial[];
+  insertedCount: number;
+  skippedCount: number;
+};
 
 function assertAdmin(profile: SessionProfile): void {
   if (profile.role !== "admin") {
@@ -146,6 +156,47 @@ export async function receiveStock(
     movementQuantity: validation.data.incomingQuantity,
     movementUnitCost: validation.data.incomingUnitCost,
   });
+}
+
+export async function seedStarterRawMaterials(
+  profile: SessionProfile,
+  repository: RawMaterialRepository,
+): Promise<SeedStarterRawMaterialsResult> {
+  assertAdmin(profile);
+
+  const merchantId = profile.merchantId!;
+  const existing = await repository.listByMerchant(merchantId, {
+    activeOnly: false,
+  });
+  const existingNames = new Set(
+    existing.map((item) => normalizeRawMaterialName(item.name)),
+  );
+
+  const toCreate = STARTER_RAW_MATERIALS.filter(
+    (item) => !existingNames.has(normalizeRawMaterialName(item.name)),
+  );
+
+  if (toCreate.length === 0) {
+    return {
+      items: [],
+      insertedCount: 0,
+      skippedCount: STARTER_RAW_MATERIALS.length,
+    };
+  }
+
+  const inserted = await repository.createMany(
+    toCreate.map((item) => ({
+      name: item.name,
+      unitOfMeasure: item.unitOfMeasure,
+      merchantId,
+    })),
+  );
+
+  return {
+    items: sortByName(inserted),
+    insertedCount: inserted.length,
+    skippedCount: STARTER_RAW_MATERIALS.length - inserted.length,
+  };
 }
 
 export async function listRawMaterialMovements(

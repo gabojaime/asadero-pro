@@ -6,6 +6,7 @@ import {
   listRawMaterialMovements,
   listRawMaterials,
   receiveStock,
+  seedStarterRawMaterials,
   updateRawMaterial,
 } from "@/domains/raw-materials/application/use-cases";
 import type {
@@ -192,6 +193,20 @@ export async function receiveStockAction(
     return {
       success: true as const,
       item: serializeRawMaterial(updated),
+    };
+  });
+
+  return result;
+}
+
+export async function seedStarterRawMaterialsAction() {
+  const result = await withRepository(async (profile, repository) => {
+    const seeded = await seedStarterRawMaterials(profile, repository);
+    return {
+      success: true as const,
+      items: seeded.items.map(serializeRawMaterial),
+      insertedCount: seeded.insertedCount,
+      skippedCount: seeded.skippedCount,
     };
   });
 

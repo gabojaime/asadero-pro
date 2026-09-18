@@ -1,14 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
 import type { RawMaterial } from "../domain/entities";
-import type { RawMaterialRepository } from "../domain/repository";
+import type {
+  CreateRawMaterialPayload,
+  RawMaterialRepository,
+} from "../domain/repository";
 import {
   createRawMaterial,
   deactivateRawMaterial,
   listRawMaterials,
   receiveStock,
+  seedStarterRawMaterials,
   updateRawMaterial,
 } from "./use-cases";
+import { STARTER_RAW_MATERIALS } from "../domain/starter-catalog";
 
 const adminProfile: SessionProfile = {
   userId: "admin-1",
@@ -45,6 +50,7 @@ function createRepository(
     listByMerchant: vi.fn().mockResolvedValue([baseMaterial]),
     getById: vi.fn().mockResolvedValue(baseMaterial),
     create: vi.fn().mockResolvedValue(baseMaterial),
+    createMany: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(baseMaterial),
     deactivate: vi.fn().mockResolvedValue({ ...baseMaterial, isActive: false }),
     applyReceipt: vi.fn().mockResolvedValue({
@@ -232,5 +238,70 @@ describe("receiveStock", () => {
       movementQuantity: 10,
       movementUnitCost: 30,
     });
+  });
+});
+
+describe("seedStarterRawMaterials", () => {
+  it("rejects non-admin users", async () => {
+    const repository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+    });
+
+    await expect(
+      seedStarterRawMaterials(grillMasterProfile, repository),
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("inserts all starter items when catalog is empty", async () => {
+    const createdItems = STARTER_RAW_MATERIALS.map((item, index) => ({
+      ...baseMaterial,
+      id: `material-${index}`,
+      name: item.name,
+      unitOfMeasure: item.unitOfMeasure,
+    }));
+
+    const repository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue(createdItems),
+    });
+
+    const result = await seedStarterRawMaterials(adminProfile, repository);
+
+    expect(result.insertedCount).toBe(STARTER_RAW_MATERIALS.length);
+    expect(result.skippedCount).toBe(0);
+    expect(repository.createMany).toHaveBeenCalledWith(
+      STARTER_RAW_MATERIALS.map((item) => ({
+        name: item.name,
+        unitOfMeasure: item.unitOfMeasure,
+        merchantId: "merchant-1",
+      })),
+    );
+  });
+
+  it("skips starter names that already exist for the merchant", async () => {
+    const repository = createRepository({
+      listByMerchant: vi.fn().mockResolvedValue([
+        { ...baseMaterial, name: "Carne" },
+        { ...baseMaterial, id: "material-2", name: "  pollo  " },
+      ]),
+      createMany: vi.fn().mockImplementation(
+        async (inputs: CreateRawMaterialPayload[]) =>
+        inputs.map((input, index) => ({
+          ...baseMaterial,
+          id: `new-${index}`,
+          name: input.name,
+          unitOfMeasure: input.unitOfMeasure,
+        })),
+      ),
+    });
+
+    const result = await seedStarterRawMaterials(adminProfile, repository);
+
+    expect(result.insertedCount).toBe(STARTER_RAW_MATERIALS.length - 2);
+    expect(result.skippedCount).toBe(2);
+    expect(repository.createMany).toHaveBeenCalledOnce();
+    const payload = vi.mocked(repository.createMany).mock.calls[0][0];
+    expect(payload.some((item) => item.name === "Carne")).toBe(false);
+    expect(payload.some((item) => item.name === "Pollo")).toBe(false);
   });
 });

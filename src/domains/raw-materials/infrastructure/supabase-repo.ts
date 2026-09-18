@@ -124,6 +124,33 @@ export function createRawMaterialRepository(
       return mapInventoryRow(data);
     },
 
+    async createMany(inputs) {
+      if (inputs.length === 0) {
+        return [];
+      }
+
+      const rows = inputs.map((input) => ({
+        merchant_id: input.merchantId,
+        name: input.name,
+        sku: input.sku ?? null,
+        unit_of_measure: input.unitOfMeasure,
+        quantity_on_hand: 0,
+        unit_cost: 0,
+        is_active: true,
+      }));
+
+      const { data, error } = await supabase
+        .from("raw_materials_inventory")
+        .insert(rows)
+        .select("*");
+
+      if (error) {
+        mapPostgresError(error);
+      }
+
+      return (data ?? []).map(mapInventoryRow);
+    },
+
     async update(id, input: UpdateRawMaterialInput) {
       const { data, error } = await supabase
         .from("raw_materials_inventory")

@@ -17,6 +17,7 @@ export interface RawMaterialRepository {
   ): Promise<RawMaterial[]>;
   getById(id: string): Promise<RawMaterial | null>;
   create(input: CreateRawMaterialPayload): Promise<RawMaterial>;
+  createMany(inputs: CreateRawMaterialPayload[]): Promise<RawMaterial[]>;
   update(id: string, input: UpdateRawMaterialInput): Promise<RawMaterial>;
   deactivate(id: string): Promise<RawMaterial>;
   applyReceipt(params: {

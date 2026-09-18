@@ -13,6 +13,7 @@ import {
   listRawMaterialMovementsAction,
   listRawMaterialsAction,
   receiveStockAction,
+  seedStarterRawMaterialsAction,
   updateRawMaterialAction,
   type ActionFailure,
   type RawMaterialDto,
@@ -54,10 +55,11 @@ function unwrapActionResult<T extends { success: true }>(
 export function useRawMaterials(
   merchantId: string | null,
   filters?: ListRawMaterialsFilters,
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: rawMaterialsQueryKey(merchantId ?? "unknown", filters),
-    enabled: Boolean(merchantId),
+    enabled: Boolean(merchantId) && options?.enabled !== false,
     queryFn: async () => {
       const result = await listRawMaterialsAction(filters);
       return unwrapActionResult(result).items;
@@ -137,6 +139,22 @@ export function useDeactivateRawMaterial(merchantId: string | null) {
     mutationFn: async (id: string) => {
       const result = await deactivateRawMaterialAction(id);
       return unwrapActionResult(result).item;
+    },
+    onSuccess: () => {
+      if (merchantId) {
+        invalidateRawMaterials(queryClient, merchantId);
+      }
+    },
+  });
+}
+
+export function useSeedStarterRawMaterials(merchantId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const result = await seedStarterRawMaterialsAction();
+      return unwrapActionResult(result);
     },
     onSuccess: () => {
       if (merchantId) {
