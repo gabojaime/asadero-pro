@@ -115,7 +115,7 @@ All **OQ-1–OQ-5** are **closed**. Details in [requirements.md](./requirements.
 | OQ-4 | RLS INSERT `waste_logs`: **`admin` + `grill_master` only** |
 | OQ-5 | History = calendar **today** in **`America/Caracas`** (not rolling 24h) |
 
-Dashboard [period timezone](../dashboard-metrics/requirements.md) stays **`America/Mexico_City`** per dashboard OQ-2; only this feature’s **shift/history day** uses Caracas until `merchants.timezone`.
+Dashboard [period timezone](../dashboard-metrics/requirements.md) uses **`America/Caracas`** per locked dashboard **OQ-2** — same calendar-day convention as this feature’s **shift/history day** (OQ-5) until `merchants.timezone` exists.
 
 ## Approval
 

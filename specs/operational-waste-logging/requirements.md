@@ -140,7 +140,7 @@ Human closed all open questions. Implementer must **not** re-open without a new 
 | OQ-2 | **Insufficient on-hand → partial decrement + warning** (do not reject submit); matches order completion deduction tolerance |
 | OQ-3 | Route slug **`/waste-log`** (sibling route; not `/kitchen/merma`) |
 | OQ-4 | **Tighten RLS INSERT** on `waste_logs` to `admin` + `grill_master` only (defense in depth with RPC) |
-| OQ-5 | History = **calendar day “today”** in **`America/Caracas`** (not rolling 24h). Dashboard period timezone remains per [dashboard-metrics](../dashboard-metrics/) OQ-2 (`America/Mexico_City`) — independent from this feature’s shift/history day |
+| OQ-5 | History = **calendar day “today”** in **`America/Caracas`** (not rolling 24h). **Aligned** with [dashboard-metrics](../dashboard-metrics/) locked OQ-2 (same **`America/Caracas`** period bounds until `merchants.timezone`) |
 
 **Calendar timezone constant (until `merchants.timezone`):** `America/Caracas`.
 

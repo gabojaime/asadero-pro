@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | id | operational-waste-logging |
-| status | review_pending |
+| status | done |
 | spec | specs/operational-waste-logging/ |
 | verification | automated (domain math; UI/RLS/RBAC remain hybrid/manual at implement time) |
 
@@ -196,3 +196,14 @@
 **Verification:** **Pass.** Logged in as admin test user; `/waste-log` at 1280×900. Before insumo selected and after **Cochino**: `getBoundingClientRect().top` for `#waste-material`, `#waste-kg`, `#waste-reason`, submit button all **196.67px** (maxDelta **0**). Hint “Disponible: 23.500 kg” at **248.67px** (below select only). Screenshot captured in agent session after selection.
 
 **Notes:** No CSS changes required. Credentials not recorded here.
+
+## 2026-09-16 17:08 — leader
+
+**Action:** Human confirmed AC-9 (cross-tenant) completed themselves. Feature marked **done** in `feature_list.json`. Notion not invoked. Leader did not edit `src/`.
+
+**Verification close:**
+- Automated: Vitest 190/190 + tsc (prior implementer)
+- Manual: AC-1 grill_master, AC-2 waiter (prior implementer); **AC-9 cross-tenant by human**
+- Reviewer: pass_with_notes (2026-09-16)
+
+**Notes:** Feature complete. Blocker on `dashboard-metrics` lifted. Operational calendar day remains **America/Caracas**.

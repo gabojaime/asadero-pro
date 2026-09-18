@@ -260,7 +260,7 @@ Subtle text link: “Configuración de merma y costos →” pointing to `/waste
 
 Implement **operational-waste-logging** before or in parallel with dashboard implementation; dashboard remains **read-only** on `waste_logs`.
 
-**Timezone note:** This feature’s “Mermas de hoy” list uses **`America/Caracas`** day bounds. Dashboard period aggregates use **`America/Mexico_City`** until `merchants.timezone` ([dashboard-metrics](../dashboard-metrics/) OQ-2). A log near local midnight may appear in today’s floor list but in a different dashboard period until merchant timezone is unified—expected for MVP.
+**Timezone note:** “Mermas de hoy” and dashboard period aggregates both use **`America/Caracas`** calendar day bounds until `merchants.timezone` ([dashboard-metrics](../dashboard-metrics/) OQ-2 locked; aligned with OQ-5 here). A log in today’s floor history counts in today’s dashboard period buckets.
 
 ## Performance budgets
 
