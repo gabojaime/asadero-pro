@@ -209,3 +209,18 @@ Reviewer approved (`pass_with_notes`); status `done`; branch `feat/order-kitchen
 **Verification:** `pnpm test src/domains/orders` — 43/43 pass
 
 **Notes:** Fee field starts empty (not `0`); typing `37` works without leading-zero stickiness; blur shows `37,00 US$`.
+
+## 2026-09-18 — implementer
+
+**Task:** Served orders Realtime (waiter `/orders` panel)
+
+**Changes:**
+- `query-adapters.ts` — `useKitchenOrdersRealtime` invalidates both `active-orders` and `served-orders`; shared `ORDERS_POLLING_FALLBACK_MS`
+- `order-completion-adapters.ts` — `useServedOrders` polling fallback when Realtime disconnected
+- `ServedOrdersPanel.tsx` — subscribes via `useKitchenOrdersRealtime`, reconnecting banner
+- `query-adapters-realtime.integration.test.tsx` — hook invalidates both query keys on change
+- `order-kitchen-flow.integration.test.tsx` — served panel shows order after kitchen mark ready
+
+**Verification:** `pnpm test src/domains/orders` — 49/49 pass
+
+**Notes:** Reuses `subscribeActiveOrders` / channel `kitchen-orders:{merchantId}`; no domain changes.
