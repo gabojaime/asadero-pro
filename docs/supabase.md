@@ -31,6 +31,28 @@ pnpm dlx supabase migration new add_orders_and_inventories
 
 Write DDL in `supabase/migrations/<timestamp>_<name>.sql` following `docs/database-schema.md`.
 
+### Data API grants (required on every new `public` table)
+
+Supabase no longer exposes a new table in `public` to the Data API until that table has explicit privileges. A missing grant makes the API return **permission denied** and includes the exact `GRANT` statement to run. Row Level Security still decides which rows a role can see; grants decide whether the table is reachable at all.
+
+From **30 October 2026**, any migration that creates a table without these grants leaves that table unreachable through the Data API. That includes new projects, preview branches, and a local `supabase db reset`. Add the grants in the **same migration** that creates the table:
+
+```sql
+grant select
+on public.your_table
+to anon;
+
+grant select, insert, update, delete
+on public.your_table
+to authenticated;
+
+grant select, insert, update, delete
+on public.your_table
+to service_role;
+```
+
+Agents must include this block for every `CREATE TABLE` in `public`. Enable RLS and add policies in that same migration (`docs/database-schema.md`). Do not rely on default privileges or a follow-up migration.
+
 Apply locally:
 
 ```bash
@@ -108,5 +130,6 @@ Do not put real keys in git. The example in `.cursor/rules/05-supabase.md` that 
 ## Deploy checklist
 
 1. RLS enabled on every operational table
-2. Production secrets only on the host (Vercel or equivalent)
-3. Auth URL / site URL configured for the deployed origin
+2. Every new `public` table has explicit `GRANT`s for `anon`, `authenticated`, and `service_role` in the migration that creates it
+3. Production secrets only on the host (Vercel or equivalent)
+4. Auth URL / site URL configured for the deployed origin

@@ -64,13 +64,50 @@ AI agents must **never** make direct schema changes via the local/production Sup
    FOR SELECT
    TO authenticated
    USING (auth.uid() = id);
+
+   -- Data API grants (required in the same migration as CREATE TABLE)
+   GRANT SELECT
+   ON public.merchants
+   TO anon;
+
+   GRANT SELECT, INSERT, UPDATE, DELETE
+   ON public.merchants
+   TO authenticated;
+
+   GRANT SELECT, INSERT, UPDATE, DELETE
+   ON public.merchants
+   TO service_role;
    ```
+
+   RLS policies still control which rows each role can read or write. Grants control whether the Data API can reach the table. Use `get_user_merchant_id()` for tenant policies (`docs/database-schema.md`); the `auth.uid() = id` predicate above is only a sketch.
 
 3. **Apply the Migration Locally**
    Run the following command to apply pending migrations to the local PostgreSQL docker instance:
    ```bash
    pnpm dlx supabase db reset
    ```
+
+### Data API grants for new `public` tables
+
+Any new table in `public` needs an explicit `GRANT` before the Data API can reach it. If a grant is missing, the API returns a permission denied error and includes the exact `GRANT` statement to run.
+
+From **30 October 2026**, a migration that creates a table without the required grants leaves that table unreachable through the Data API. This applies to new projects, preview branches, and a local `supabase db reset`.
+
+Put these statements in the **same migration** that creates the table. Do not rely on default privileges or a later migration:
+
+```sql
+GRANT SELECT
+ON public.your_table
+TO anon;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON public.your_table
+TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON public.your_table
+TO service_role;
+```
 
 ---
 
@@ -142,5 +179,6 @@ To configure your cursor settings (`project.json` or global MCP settings), ensur
 ## 5. Deployment Checklist
 Before building your production bundle or deploying to the cloud:
 1. **RLS Audit:** Double-check that all tables have `ROW LEVEL SECURITY` enabled.
-2. **Environment Isolation:** Ensure `.env.local` contains local variables and that production credentials are set exclusively as environment variables on your deployment platform (e.g., Vercel).
-3. **Custom Domains:** Configure custom domain names for user authentication to prevent cross-site cookie restrictions.
+2. **Data API grants:** Every new `public` table has `GRANT`s for `anon`, `authenticated`, and `service_role` in the migration that creates it.
+3. **Environment Isolation:** Ensure `.env.local` contains local variables and that production credentials are set exclusively as environment variables on your deployment platform (e.g., Vercel).
+4. **Custom Domains:** Configure custom domain names for user authentication to prevent cross-site cookie restrictions.
