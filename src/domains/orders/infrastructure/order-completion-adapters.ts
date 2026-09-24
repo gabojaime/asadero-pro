@@ -43,6 +43,11 @@ function serializeOrderForClient(order: {
   deliveryZone: string | null;
   status: string;
   totalAmount: number;
+  fulfillmentTiming: string;
+  readyByAt: Date | string | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   sentToKitchenAt: Date | string;
   readyAt: Date | string | null;
   createdAt: Date | string;
@@ -51,6 +56,15 @@ function serializeOrderForClient(order: {
 }): OrderDto {
   return {
     ...order,
+    fulfillmentTiming: order.fulfillmentTiming,
+    readyByAt: order.readyByAt
+      ? typeof order.readyByAt === "string"
+        ? order.readyByAt
+        : order.readyByAt.toISOString()
+      : null,
+    customerFirstName: order.customerFirstName,
+    customerLastName: order.customerLastName,
+    customerPhone: order.customerPhone,
     sentToKitchenAt:
       typeof order.sentToKitchenAt === "string"
         ? order.sentToKitchenAt

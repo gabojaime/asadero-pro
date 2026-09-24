@@ -1,6 +1,16 @@
 import { z } from "zod";
 import type { Cart, CartLine, MenuItem, MvpServiceType } from "./entities";
 import { OrderError } from "./errors";
+import {
+  DEFAULT_MERCHANT_TIMEZONE,
+  getScheduledWindowBoundsUtc,
+  SCHEDULED_MAX_CALENDAR_DAYS,
+  SCHEDULED_MIN_LEAD_MINUTES,
+} from "./merchant-local-time";
+
+export { SCHEDULED_MAX_CALENDAR_DAYS, SCHEDULED_MIN_LEAD_MINUTES };
+
+const customerPhonePattern = /^[\d+\-\s()]{7,20}$/;
 
 const cartSideSchema = z.object({
   slot: z.union([z.literal(1), z.literal(2)]),
@@ -16,13 +26,36 @@ const cartLineSchema = z.object({
 
 export const mvpServiceTypeSchema = z.enum(["take_out", "delivery"]);
 
+const fulfillmentTimingSchema = z.enum(["immediate", "scheduled"]);
+
+function parseReadyByAt(value: unknown): Date | null {
+  if (value == null || value === "") {
+    return null;
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export const cartSchema = z.object({
   serviceType: mvpServiceTypeSchema,
+  fulfillmentTiming: fulfillmentTimingSchema,
+  readyByAt: z.preprocess(parseReadyByAt, z.date().nullable()),
+  customerFirstName: z.string().trim().max(80).nullable(),
+  customerLastName: z.string().trim().max(80).nullable(),
+  customerPhone: z.string().trim().max(20).nullable(),
   deliveryFee: z.number().nonnegative(),
   deliveryZone: z.string().trim().max(100).nullable(),
   tableNumber: z.null(),
   lines: z.array(cartLineSchema).min(1),
 });
+
+export type ValidateCartOptions = {
+  now?: Date;
+  merchantTimezone?: string;
+};
 
 export const markOrderReadySchema = z.object({
   orderId: z.string().uuid(),
@@ -72,6 +105,99 @@ function validateDrinkLine(line: CartLine, menuItem: MenuItem): void {
   }
 }
 
+function validateFulfillmentRules(
+  cart: Cart,
+  now: Date,
+  merchantTimezone: string,
+): void {
+  if (cart.fulfillmentTiming === "immediate") {
+    if (cart.readyByAt != null) {
+      throw new OrderError(
+        "validation_failed",
+        "Entrega inmediata no requiere hora de listo.",
+        { readyByAt: "Quita la hora programada." },
+      );
+    }
+    return;
+  }
+
+  if (cart.readyByAt == null) {
+    throw new OrderError(
+      "validation_failed",
+      "Indica cuándo debe estar listo el pedido.",
+      { readyByAt: "Selecciona fecha y hora." },
+    );
+  }
+
+  const minReadyByMs = now.getTime() + SCHEDULED_MIN_LEAD_MINUTES * 60_000;
+  if (cart.readyByAt.getTime() < minReadyByMs) {
+    throw new OrderError(
+      "validation_failed",
+      "La hora programada debe ser al menos 5 minutos después.",
+      { readyByAt: "Elige una hora al menos 5 minutos después." },
+    );
+  }
+
+  const { maxReadyByUtc } = getScheduledWindowBoundsUtc(
+    merchantTimezone,
+    now,
+    SCHEDULED_MAX_CALENDAR_DAYS,
+  );
+  if (cart.readyByAt.getTime() > maxReadyByUtc.getTime()) {
+    throw new OrderError(
+      "validation_failed",
+      "La hora programada no puede ser más de 7 días adelante.",
+      { readyByAt: "Elige una fecha dentro de los próximos 7 días." },
+    );
+  }
+}
+
+function validateCustomerFields(cart: Cart): void {
+  const fields: Array<{
+    key: "customerFirstName" | "customerLastName" | "customerPhone";
+    value: string | null;
+    message: string;
+  }> = [
+    {
+      key: "customerFirstName",
+      value: cart.customerFirstName,
+      message: "Nombre inválido.",
+    },
+    {
+      key: "customerLastName",
+      value: cart.customerLastName,
+      message: "Apellido inválido.",
+    },
+    {
+      key: "customerPhone",
+      value: cart.customerPhone,
+      message: "Teléfono inválido.",
+    },
+  ];
+
+  for (const field of fields) {
+    const trimmed = field.value?.trim() ?? "";
+    if (!trimmed) {
+      continue;
+    }
+
+    if (field.key === "customerPhone") {
+      if (!customerPhonePattern.test(trimmed)) {
+        throw new OrderError("validation_failed", field.message, {
+          [field.key]: field.message,
+        });
+      }
+      continue;
+    }
+
+    if (trimmed.length < 1 || trimmed.length > 80) {
+      throw new OrderError("validation_failed", field.message, {
+        [field.key]: field.message,
+      });
+    }
+  }
+}
+
 function validateDeliveryRules(cart: Cart): void {
   if (cart.serviceType === "delivery") {
     if (cart.deliveryFee < 0) {
@@ -101,7 +227,14 @@ function validateDeliveryRules(cart: Cart): void {
   }
 }
 
-export function validateCartForSubmit(cart: Cart, catalog: MenuItem[]): Cart {
+export function validateCartForSubmit(
+  cart: Cart,
+  catalog: MenuItem[],
+  options: ValidateCartOptions = {},
+): Cart {
+  const now = options.now ?? new Date();
+  const merchantTimezone = options.merchantTimezone ?? DEFAULT_MERCHANT_TIMEZONE;
+
   const parsed = cartSchema.safeParse(cart);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -120,6 +253,8 @@ export function validateCartForSubmit(cart: Cart, catalog: MenuItem[]): Cart {
   }
 
   validateDeliveryRules(parsed.data);
+  validateFulfillmentRules(parsed.data, now, merchantTimezone);
+  validateCustomerFields(parsed.data);
 
   for (const line of parsed.data.lines) {
     const menuItem = findMenuItem(catalog, line.menuItemId);
@@ -133,7 +268,20 @@ export function validateCartForSubmit(cart: Cart, catalog: MenuItem[]): Cart {
     validateMeatPlateSides(line, menuItem, catalog);
   }
 
-  return parsed.data;
+  return {
+    ...parsed.data,
+    customerFirstName: trimOptionalName(parsed.data.customerFirstName),
+    customerLastName: trimOptionalName(parsed.data.customerLastName),
+    customerPhone: trimOptionalName(parsed.data.customerPhone),
+  };
+}
+
+function trimOptionalName(value: string | null): string | null {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function parseMvpServiceType(value: string): MvpServiceType {

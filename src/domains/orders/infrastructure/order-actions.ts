@@ -13,6 +13,7 @@ import { OrderError } from "@/domains/orders/domain/errors";
 import { WasteError } from "@/domains/waste/domain/errors";
 import { createMenuCatalogRepository } from "@/domains/orders/infrastructure/supabase-menu-catalog-repo";
 import { createOrderRepository } from "@/domains/orders/infrastructure/supabase-order-repo";
+import { createMerchantKitchenSettingsRepository } from "@/domains/orders/infrastructure/supabase-merchant-kitchen-settings-repo";
 import { createInventoryDeductionRepository } from "@/domains/waste/infrastructure/supabase-costing-repo";
 import { getServerSessionProfile } from "@/domains/auth/infrastructure/session-profile-server";
 import { createClient } from "@/shared/infrastructure/supabase/server";
@@ -73,6 +74,11 @@ function serializeOrder(order: {
   deliveryZone: string | null;
   status: string;
   totalAmount: number;
+  fulfillmentTiming: string;
+  readyByAt: Date | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   sentToKitchenAt: Date;
   readyAt: Date | null;
   createdAt: Date;
@@ -89,6 +95,11 @@ function serializeOrder(order: {
 }): OrderDto {
   return {
     ...order,
+    fulfillmentTiming: order.fulfillmentTiming,
+    readyByAt: order.readyByAt?.toISOString() ?? null,
+    customerFirstName: order.customerFirstName,
+    customerLastName: order.customerLastName,
+    customerPhone: order.customerPhone,
     sentToKitchenAt: order.sentToKitchenAt.toISOString(),
     readyAt: order.readyAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
@@ -107,8 +118,30 @@ async function getAuthenticatedContext() {
     profile,
     catalogRepo: createMenuCatalogRepository(supabase),
     orderRepo: createOrderRepository(supabase),
+    merchantSettingsRepo: createMerchantKitchenSettingsRepository(supabase),
     deductionRepo: createInventoryDeductionRepository(supabase),
   };
+}
+
+export async function getMerchantKitchenSettingsAction(): Promise<
+  | {
+      success: true;
+      settings: {
+        timezone: string;
+        kitchenPriorityHorizonMinutes: number;
+      };
+    }
+  | ActionFailure
+> {
+  try {
+    const { profile, merchantSettingsRepo } = await getAuthenticatedContext();
+    const settings = await merchantSettingsRepo.getKitchenSettings(
+      profile.merchantId!,
+    );
+    return { success: true, settings };
+  } catch (error) {
+    return mapError(error);
+  }
 }
 
 export async function listMenuItemsAction():
@@ -125,8 +158,13 @@ export async function listMenuItemsAction():
 export async function listActiveOrdersAction():
   Promise<{ success: true; orders: OrderDto[] } | ActionFailure> {
   try {
-    const { profile, orderRepo } = await getAuthenticatedContext();
-    const orders = await listActiveOrders(profile.merchantId!, orderRepo);
+    const { profile, orderRepo, merchantSettingsRepo } =
+      await getAuthenticatedContext();
+    const orders = await listActiveOrders(
+      profile.merchantId!,
+      orderRepo,
+      merchantSettingsRepo,
+    );
     return { success: true, orders: orders.map(serializeOrder) };
   } catch (error) {
     return mapError(error);
@@ -137,8 +175,15 @@ export async function submitOrderAction(
   cart: Cart,
 ): Promise<{ success: true; order: OrderDto } | ActionFailure> {
   try {
-    const { profile, catalogRepo, orderRepo } = await getAuthenticatedContext();
-    const order = await submitOrder(cart, profile, catalogRepo, orderRepo);
+    const { profile, catalogRepo, orderRepo, merchantSettingsRepo } =
+      await getAuthenticatedContext();
+    const order = await submitOrder(
+      cart,
+      profile,
+      catalogRepo,
+      orderRepo,
+      merchantSettingsRepo,
+    );
     return { success: true, order: serializeOrder(order) };
   } catch (error) {
     return mapError(error);

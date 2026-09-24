@@ -1,4 +1,10 @@
-import type { Cart, CartLine, CartSideSelection, MvpServiceType } from "./entities";
+import type {
+  Cart,
+  CartLine,
+  CartSideSelection,
+  MvpServiceType,
+  OrderFulfillmentTiming,
+} from "./entities";
 
 export function roundMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
@@ -82,4 +88,50 @@ export function setDeliveryFee(cart: Cart, deliveryFee: number): Cart {
 
 export function setDeliveryZone(cart: Cart, deliveryZone: string | null): Cart {
   return { ...cart, deliveryZone };
+}
+
+export function setFulfillmentTiming(
+  cart: Cart,
+  fulfillmentTiming: OrderFulfillmentTiming,
+  readyByAt: Date | null = null,
+): Cart {
+  if (fulfillmentTiming === "immediate") {
+    return { ...cart, fulfillmentTiming, readyByAt: null };
+  }
+
+  return {
+    ...cart,
+    fulfillmentTiming,
+    readyByAt: readyByAt ?? cart.readyByAt,
+  };
+}
+
+function trimToNull(value: string | null): string | null {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function setCustomerFirstName(
+  cart: Cart,
+  customerFirstName: string | null,
+): Cart {
+  return { ...cart, customerFirstName: trimToNull(customerFirstName) };
+}
+
+export function setCustomerLastName(
+  cart: Cart,
+  customerLastName: string | null,
+): Cart {
+  return { ...cart, customerLastName: trimToNull(customerLastName) };
+}
+
+export function setCustomerPhone(cart: Cart, customerPhone: string | null): Cart {
+  return { ...cart, customerPhone: trimToNull(customerPhone) };
+}
+
+export function setReadyByAt(cart: Cart, readyByAt: Date | null): Cart {
+  return { ...cart, readyByAt };
 }

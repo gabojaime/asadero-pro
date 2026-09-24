@@ -43,6 +43,11 @@ export type OrderDto = {
   deliveryZone: string | null;
   status: string;
   totalAmount: number;
+  fulfillmentTiming: string;
+  readyByAt: string | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   sentToKitchenAt: string;
   readyAt: string | null;
   createdAt: string;

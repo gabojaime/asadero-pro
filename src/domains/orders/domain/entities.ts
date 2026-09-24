@@ -9,6 +9,17 @@ export type OrderStatus =
 export type MvpServiceType = "take_out" | "delivery";
 export type ServiceType = "dine_in" | "take_out" | "delivery";
 
+export type OrderFulfillmentTiming = "immediate" | "scheduled";
+
+export type KitchenPriorityTier = "urgent" | "deferred";
+
+export const DEFAULT_KITCHEN_PRIORITY_HORIZON_MINUTES = 45;
+
+export type MerchantKitchenSettings = {
+  timezone: string;
+  kitchenPriorityHorizonMinutes: number;
+};
+
 export type MenuItemKind = "meat_plate" | "drink" | "side";
 
 export type ProteinGroup = "beef" | "pork" | "chicken";
@@ -38,6 +49,11 @@ export type CartLine = {
 
 export type Cart = {
   serviceType: MvpServiceType;
+  fulfillmentTiming: OrderFulfillmentTiming;
+  readyByAt: Date | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   deliveryFee: number;
   deliveryZone: string | null;
   tableNumber: null;
@@ -71,6 +87,11 @@ export type Order = {
   deliveryZone: string | null;
   status: OrderStatus;
   totalAmount: number;
+  fulfillmentTiming: OrderFulfillmentTiming;
+  readyByAt: Date | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   sentToKitchenAt: Date;
   readyAt: Date | null;
   createdAt: Date;
@@ -81,6 +102,11 @@ export type Order = {
 export function createEmptyCart(): Cart {
   return {
     serviceType: "take_out",
+    fulfillmentTiming: "immediate",
+    readyByAt: null,
+    customerFirstName: null,
+    customerLastName: null,
+    customerPhone: null,
     deliveryFee: 0,
     deliveryZone: null,
     tableNumber: null,

@@ -1,8 +1,63 @@
 import type { UserRole } from "@/domains/auth/domain/entities";
-import type { Order, OrderStatus } from "./entities";
+import type { KitchenPriorityTier, Order, OrderStatus } from "./entities";
 import { OrderError } from "./errors";
 
 export const ACTIVE_KITCHEN_STATUSES = ["pending", "cooking"] as const;
+
+export function getKitchenPriorityTier(
+  order: Pick<Order, "fulfillmentTiming" | "readyByAt">,
+  now: Date,
+  horizonMinutes: number,
+): KitchenPriorityTier {
+  if (order.fulfillmentTiming === "immediate") {
+    return "urgent";
+  }
+
+  if (order.readyByAt == null) {
+    return "urgent";
+  }
+
+  const minutesUntilReady =
+    (order.readyByAt.getTime() - now.getTime()) / 60_000;
+  return minutesUntilReady <= horizonMinutes ? "urgent" : "deferred";
+}
+
+export function sortKitchenQueueOrders(input: {
+  orders: Order[];
+  now: Date;
+  horizonMinutes: number;
+}): Order[] {
+  const { orders, now, horizonMinutes } = input;
+  const withTier = orders.map((order) => ({
+    order,
+    tier: getKitchenPriorityTier(order, now, horizonMinutes),
+  }));
+
+  const urgent = withTier
+    .filter((entry) => entry.tier === "urgent")
+    .sort(
+      (left, right) =>
+        left.order.sentToKitchenAt.getTime() -
+        right.order.sentToKitchenAt.getTime(),
+    );
+
+  const deferred = withTier
+    .filter((entry) => entry.tier === "deferred")
+    .sort((left, right) => {
+      const byReady =
+        (left.order.readyByAt?.getTime() ?? 0) -
+        (right.order.readyByAt?.getTime() ?? 0);
+      if (byReady !== 0) {
+        return byReady;
+      }
+      return (
+        left.order.sentToKitchenAt.getTime() -
+        right.order.sentToKitchenAt.getTime()
+      );
+    });
+
+  return [...urgent, ...deferred].map((entry) => entry.order);
+}
 
 export function isActiveKitchenOrder(status: OrderStatus): boolean {
   return ACTIVE_KITCHEN_STATUSES.includes(

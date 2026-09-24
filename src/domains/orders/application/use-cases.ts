@@ -6,10 +6,12 @@ import { OrderError } from "../domain/errors";
 import { completeOrder as completeOrderDomain } from "../domain/order-completion";
 import {
   assertCanMarkReady,
+  sortKitchenQueueOrders,
   sortOrdersChronologically,
 } from "../domain/order-status";
 import type {
   MenuCatalogRepository,
+  MerchantKitchenSettingsRepository,
   OrderRepository,
 } from "../domain/repository";
 import { validateCartForSubmit } from "../domain/validations";
@@ -52,18 +54,34 @@ export async function submitOrder(
   actor: SessionProfile,
   catalogRepo: MenuCatalogRepository,
   orderRepo: OrderRepository,
+  merchantSettingsRepo: MerchantKitchenSettingsRepository,
 ) {
   assertCanSubmitOrder(actor);
 
   const merchantId = actor.merchantId!;
-  const catalog = await catalogRepo.listActiveMenu(merchantId);
-  const validatedCart = validateCartForSubmit(cart, catalog);
+  const [catalog, kitchenSettings] = await Promise.all([
+    catalogRepo.listActiveMenu(merchantId),
+    merchantSettingsRepo.getKitchenSettings(merchantId),
+  ]);
+  const now = new Date();
+  const validatedCart = validateCartForSubmit(cart, catalog, {
+    now,
+    merchantTimezone: kitchenSettings.timezone,
+  });
   const totalAmount = computeOrderTotal(validatedCart);
 
   return orderRepo.insertOrder({
     merchantId,
     serverId: actor.userId,
     serviceType: validatedCart.serviceType,
+    fulfillmentTiming: validatedCart.fulfillmentTiming,
+    readyByAt:
+      validatedCart.fulfillmentTiming === "scheduled"
+        ? validatedCart.readyByAt
+        : null,
+    customerFirstName: validatedCart.customerFirstName,
+    customerLastName: validatedCart.customerLastName,
+    customerPhone: validatedCart.customerPhone,
     deliveryFee:
       validatedCart.serviceType === "delivery" ? validatedCart.deliveryFee : 0,
     deliveryZone:
@@ -79,9 +97,17 @@ export async function submitOrder(
 export async function listActiveOrders(
   merchantId: string,
   orderRepo: OrderRepository,
+  merchantSettingsRepo: MerchantKitchenSettingsRepository,
 ) {
-  const orders = await orderRepo.listActiveOrders(merchantId);
-  return sortOrdersChronologically(orders);
+  const [orders, kitchenSettings] = await Promise.all([
+    orderRepo.listActiveOrders(merchantId),
+    merchantSettingsRepo.getKitchenSettings(merchantId),
+  ]);
+  return sortKitchenQueueOrders({
+    orders,
+    now: new Date(),
+    horizonMinutes: kitchenSettings.kitchenPriorityHorizonMinutes,
+  });
 }
 
 export async function markOrderReady(

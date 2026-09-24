@@ -34,6 +34,10 @@ export function servedOrdersQueryKey(merchantId: string) {
   return ["served-orders", merchantId] as const;
 }
 
+export function merchantKitchenSettingsQueryKey(merchantId: string) {
+  return ["merchant-kitchen-settings", merchantId] as const;
+}
+
 function throwActionError(result: ActionFailure): never {
   const error = new Error(result.message);
   Object.assign(error, {
@@ -51,6 +55,27 @@ function unwrapActionResult<T extends { success: true }>(
   }
 
   return result;
+}
+
+export function useMerchantKitchenSettings(merchantId: string | null) {
+  const testContext = useOrdersTestContext();
+
+  return useQuery({
+    queryKey: merchantKitchenSettingsQueryKey(merchantId ?? "unknown"),
+    enabled: Boolean(merchantId),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      if (testContext && merchantId) {
+        return testContext.merchantSettingsRepo.getKitchenSettings(merchantId);
+      }
+
+      const { getMerchantKitchenSettingsAction } = await import(
+        "@/domains/orders/infrastructure/order-actions"
+      );
+      const result = await getMerchantKitchenSettingsAction();
+      return unwrapActionResult(result).settings;
+    },
+  });
 }
 
 export function useMenuItems(merchantId: string | null) {
@@ -101,6 +126,7 @@ export function useActiveOrders(
         const orders = await listActiveOrders(
           merchantId,
           testContext.orderRepo,
+          testContext.merchantSettingsRepo,
         );
         return orders.map(serializeOrderForClient);
       }
@@ -126,6 +152,7 @@ export function useSubmitOrder(profile: SessionProfile | null) {
           profile,
           testContext.catalogRepo,
           testContext.orderRepo,
+          testContext.merchantSettingsRepo,
         );
         return serializeOrderForClient(order);
       }
@@ -235,6 +262,11 @@ function serializeOrderForClient(order: {
   deliveryZone: string | null;
   status: string;
   totalAmount: number;
+  fulfillmentTiming: string;
+  readyByAt: Date | string | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   sentToKitchenAt: Date | string;
   readyAt: Date | string | null;
   createdAt: Date | string;
@@ -255,6 +287,15 @@ function serializeOrderForClient(order: {
 }): OrderDto {
   return {
     ...order,
+    fulfillmentTiming: order.fulfillmentTiming,
+    readyByAt: order.readyByAt
+      ? typeof order.readyByAt === "string"
+        ? order.readyByAt
+        : order.readyByAt.toISOString()
+      : null,
+    customerFirstName: order.customerFirstName,
+    customerLastName: order.customerLastName,
+    customerPhone: order.customerPhone,
     sentToKitchenAt:
       typeof order.sentToKitchenAt === "string"
         ? order.sentToKitchenAt
