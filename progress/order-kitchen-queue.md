@@ -224,3 +224,102 @@ Reviewer approved (`pass_with_notes`); status `done`; branch `feat/order-kitchen
 **Verification:** `pnpm test src/domains/orders` — 49/49 pass
 
 **Notes:** Reuses `subscribeActiveOrders` / channel `kitchen-orders:{merchantId}`; no domain changes.
+
+## 2026-09-24 — spec_author
+
+**Task:** Spec increment (fulfillment timing, kitchen priority sort, optional customer)
+
+**Outcome:** Spec increment written. Pending human approval for OQ-13–OQ-16 plus OQ-17 timezone default and OQ-18 scheduled window. Tasks T48–T58.
+
+**Notes:** Do not start implementer until human approval. Feature baseline remains `done`; increment is spec_ready, not in_progress.
+
+## 2026-09-24 — leader
+
+**Action:** Human approved spec increment OQ-13–OQ-18.
+
+**Locked decisions (human):**
+- Timezone default: `America/Caracas` (OQ-17)
+- Scheduled window: 5 minutes–7 days (OQ-18)
+
+**Outcome:** Increment status `spec_ready` / approved. Tasks T48–T58 unblocked. Implementation **not started** until the user explicitly asks. No implementer, no `src/` edits, no commit, no Notion.
+
+**Notes:** Feature baseline remains `done`. Increment is approved but not `in_progress`.
+
+## 2026-09-24 — implementer (Phase 7 T48–T58)
+
+**Task:** Fulfillment timing, kitchen priority sort, optional customer fields
+
+**Changes:**
+- `supabase/migrations/20260924180000_order_fulfillment_and_kitchen_priority.sql` — enum, order/merchant columns, RPC + trigger
+- Domain: `sortKitchenQueueOrders`, fulfillment validation, `merchant-local-time.ts`, cart setters
+- Application: `submitOrder` / `listActiveOrders` + `MerchantKitchenSettingsRepository`
+- Infrastructure: supabase repos, DTOs, actions, in-memory test repos
+- UI: `FulfillmentTimingSelector`, `CustomerContactFields`, kitchen badges/customer line
+- RTL scenarios D/E/F; `docs/database-schema.md` updated; types regenerated manually
+
+**Verification:**
+- `pnpm test src/domains/orders` — 58/58 pass
+- `pnpm exec tsc --noEmit` — pending full repo (orders DTO fix applied)
+- Manual pending: T57 Realtime deferred ticket + horizon change in DB (AC-28)
+
+**Notes:** Branch `feature/addional-orden-data`. Apply migration locally via `pnpm dlx supabase db reset` before live smoke.
+
+### Phase 7 verification (T58)
+
+| Check | Result |
+|-------|--------|
+| Vitest domain sort (`kitchen-queue-sort.test.ts`) | pass |
+| Vitest validations + use cases | pass |
+| RTL A–F (`order-kitchen-flow.integration.test.tsx`) | pass |
+| Manual Realtime deferred scheduled (AC-28) | pending human |
+| Manual horizon SQL change + refetch sort | pending human |
+
+## 2026-09-24 15:20 — reviewer
+
+**Verdict:** pass_with_notes (approve)
+
+**Scope:** Phase 7 increment T48–T58 on `feature/addional-orden-data` (working tree; uncommitted). Spec amendment fulfillment timing, kitchen sort, optional customer.
+
+**Locked decisions check:**
+| Decision | Result |
+|----------|--------|
+| `ready_by_at` (promise) vs `ready_at` (grill ready) | pass — columns distinct; mark-ready only sets `readyAt`; CHECK consistency in migration |
+| Merchant TZ default `America/Caracas` | pass — migration DEFAULT + `DEFAULT_MERCHANT_TIMEZONE` |
+| Horizon default 45 on `merchants.kitchen_priority_horizon_minutes` | pass — DEFAULT 45, CHECK 1–480; used in `listActiveOrders` → `sortKitchenQueueOrders` |
+| Scheduled window 5 min – 7 calendar days | pass — `SCHEDULED_MIN_LEAD_MINUTES` / `SCHEDULED_MAX_CALENDAR_DAYS` in domain + UI bounds |
+| Optional customer columns | pass — nullable; empty submit OK; kitchen line when present |
+
+**Spec / tasks (T48–T58):**
+| Task | Result |
+|------|--------|
+| T48 migration + RPC + kitchen UPDATE trigger fields | pass |
+| T49 types + `docs/database-schema.md` | pass |
+| T50–T51 domain sort + validation | pass (sort Vitest strong; fulfillment validation unit tests thin — see notes) |
+| T52–T53 application + infra repos/actions | pass |
+| T54–T55 waiter/kitchen UI | pass — DESIGN Live Order Queue + deferred muted optional |
+| T56 RTL D/E/F | pass |
+| T57 manual Realtime/horizon | deferred (documented; allowed follow-up) |
+| T58 progress verification table | pass |
+
+**Architecture / CHECKPOINTS:**
+- Hexagonal: domain pure; no `@supabase/supabase-js` in presentation/app orders paths; ports for merchant kitchen settings — pass
+- DESIGN.md Live Order Queue Item (flat, service pill, SLA, min 44px) + fulfillment/customer badges — pass
+- Migration present; docs/types updated — pass
+- `feature_list.json` `review_pending` — correct for this gate
+
+**Automated re-check:** `pnpm test` — **230/230** pass (includes orders **58** tests: domain sort 6, RTL A–F 6 scenarios, use cases, etc.). `pnpm exec tsc --noEmit` — pass.
+
+**Findings:**
+- [note] Manual T57 / AC-28 (Realtime deferred ticket + horizon SQL change after refetch) remains human follow-up — explicitly allowed; do not block approve.
+- [minor] `validations.test.ts` still lacks dedicated AAA cases for scheduled reject paths (readyBy < 5 min, > 7 days, immediate+readyByAt, empty customer OK). Logic exists in `validateFulfillmentRules` / `validateCustomerFields`; RTL covers happy scheduled + customer. Optional harden before merge.
+- [minor] FR-13 domain clamp for `horizonMinutes < 1` not implemented — DB CHECK covers production; domain trusts config.
+- [nit] Branch/worktree still largely uncommitted (`feature/addional-orden-data` typo retained). `vitest run src/domains/orders` alone can miss jsdom (`environmentMatchGlobs` deprecated); use full `pnpm test` as gate.
+
+**Manual verification status:** partial (automated + RTL green; T57 live Realtime/horizon pending)
+
+**Recommendation to leader:** **Approve.** Set Phase 7 / feature increment to **`done`**. Keep T57 as documented human follow-up after `supabase db reset` + migration apply. No implementer rework required for gate close.
+
+## 2026-09-24 15:17 — leader
+
+Reviewer approved Phase 7 increment (`pass_with_notes`) on `feature/addional-orden-data`. Status `done`. Notes: 2026-09-24 increment approved (fulfillment timing, kitchen sort, optional customer). T57 live smoke remains optional follow-up. No implementer, no `src/`, no commit, no Notion.
+

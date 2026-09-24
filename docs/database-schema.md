@@ -170,6 +170,35 @@ WITH CHECK (
 - `create_order_with_items(...)` RPC — atomic insert of order + items + sides in one transaction
 - `orders_enforce_kitchen_update_columns` trigger — grill_master/admin UPDATE limited to `status`, `ready_at`, `updated_at`
 
+**Fulfillment timing & kitchen priority** (`20260924180000_order_fulfillment_and_kitchen_priority.sql`):
+
+```sql
+CREATE TYPE order_fulfillment_timing AS ENUM ('immediate', 'scheduled');
+
+ALTER TABLE merchants
+  ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Caracas',
+  ADD COLUMN kitchen_priority_horizon_minutes INT NOT NULL DEFAULT 45
+    CHECK (kitchen_priority_horizon_minutes >= 1 AND kitchen_priority_horizon_minutes <= 480);
+
+ALTER TABLE orders
+  ADD COLUMN fulfillment_timing order_fulfillment_timing NOT NULL DEFAULT 'immediate',
+  ADD COLUMN ready_by_at TIMESTAMPTZ NULL,
+  ADD COLUMN customer_first_name TEXT NULL,
+  ADD COLUMN customer_last_name TEXT NULL,
+  ADD COLUMN customer_phone TEXT NULL,
+  ADD CONSTRAINT orders_fulfillment_ready_by_consistency CHECK (
+    (fulfillment_timing = 'immediate' AND ready_by_at IS NULL)
+    OR (fulfillment_timing = 'scheduled' AND ready_by_at IS NOT NULL)
+  );
+
+CREATE INDEX idx_orders_ready_by_at ON orders(merchant_id, ready_by_at)
+  WHERE status IN ('pending', 'cooking') AND fulfillment_timing = 'scheduled';
+```
+
+- `ready_by_at` — customer promised ready/delivery time (scheduled orders only). **`ready_at`** remains grill mark-ready timestamp.
+- `create_order_with_items` RPC extended with fulfillment + optional customer columns.
+- Kitchen UPDATE trigger also blocks changes to fulfillment/customer columns after insert.
+
 CREATE TABLE recipe_ingredients (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,

@@ -2,7 +2,7 @@
 
 Ordered vertical slices. Each task fits one implementer session unless noted.
 
-**Status:** Human approved OQ-1–OQ-12 on **2026-09-12**. Implementation **unblocked**. Leader sets `feature_list.json` to `spec_ready` / `in_progress` and creates `progress/order-kitchen-queue.md`.
+**Status:** Baseline OQ-1–OQ-12 approved **2026-09-12** (shipped). **Phase 7 (2026-09-24 amendment):** OQ-13–OQ-18 approved **2026-09-24** — **T48–T58 unblocked**. Leader sets `in_progress` when implementer starts Phase 7 (or reopens if baseline incomplete).
 
 Tag: `vitest` | `rtl` | `manual` | `both`
 
@@ -11,6 +11,7 @@ Tag: `vitest` | `rtl` | `manual` | `both`
 ## Phase 0 — Approval gate (complete)
 
 - [x] **T0** — Human approved OQ-1–OQ-12 (2026-09-12). Overrides: OQ-3 takeaway/delivery + manual delivery fee; OQ-10 es-ES USD. Leader records in `feature_list.json` + creates `progress/order-kitchen-queue.md` when starting. (`manual`)
+- [x] **T0b** — Human approved OQ-13–OQ-18 (2026-09-24): `ready_by_at` vs `ready_at`, TIMESTAMPTZ + merchant TZ default **`America/Caracas`**, horizon on `merchants.kitchen_priority_horizon_minutes`, optional customer columns, scheduled window min **5 min** / max **7 days**. Phase 7 unblocked. (`manual`)
 
 ---
 
@@ -110,7 +111,26 @@ T0 (approved) → T1 migration → T2 types
   → T31–T33 kitchen UI (depends T17, T18, T23)
   → T34–T40 RTL integration (depends T29, T32, T17)
   → T41–T47 verification (T41 Realtime manual after RTL T34–T40)
+  → T48–T58 Phase 7 increment (OQ-13–OQ-18 approved 2026-09-24)
 ```
+
+## Phase 7 — Fulfillment timing, kitchen priority sort, customer fields (2026-09-24)
+
+Depends on baseline Phases 1–6 complete. **Approved:** [requirements.md § Approved decisions (2026-09-24)](./requirements.md#approved-decisions-2026-09-24--fulfillment-sort-customer).
+
+- [ ] **T48** — Migration `order_fulfillment_and_kitchen_priority`: enum `order_fulfillment_timing`; `orders.fulfillment_timing`, `ready_by_at`, `customer_*`; CHECK consistency; `merchants.timezone` DEFAULT **`America/Caracas`**, `merchants.kitchen_priority_horizon_minutes`; index on scheduled active orders; extend `create_order_with_items` RPC. (`manual`)
+- [ ] **T49** — Regenerate Supabase types; update `docs/database-schema.md`. (`manual`)
+- [ ] **T50** — Domain: extend `Order`, `Cart`; `getKitchenPriorityTier`, **`sortKitchenQueueOrders`** in `domain/order-status.ts` (or `kitchen-queue-sort.ts`); fulfillment + customer validation in `validations.ts` (min lead 5 min, max 7 days — OQ-18). (`vitest`)
+- [ ] **T51** — **`domain/kitchen-queue-sort.test.ts`**: immediate always urgent; scheduled > N deferred below; scheduled ≤ N mixed FIFO with immediate by `sentToKitchenAt`; deferred sorted by `readyByAt`; boundary at exactly N. (`vitest`)
+- [ ] **T52** — Application: `submitOrder` persists new columns; `listActiveOrders` loads merchant horizon + applies `sortKitchenQueueOrders`. (`vitest`)
+- [ ] **T53** — Infrastructure: map columns in `supabase-order-repo.ts`; merchant horizon/timezone read (extend existing merchant/session load or small port). (`manual`)
+- [ ] **T54** — **`FulfillmentTimingSelector.tsx`** + **`CustomerContactFields.tsx`**; wire `OrderRegistryView` cart state (immutable `setFulfillmentTiming`). (`manual` L2)
+- [ ] **T55** — **`KitchenOrderCard`**: Inmediato / Para las HH:mm badge; customer line; deferred tickets visually de-emphasized optional (muted border — DESIGN.md). (`manual` L2)
+- [ ] **T56** — RTL: extend `order-kitchen-flow.integration.test.tsx` — **(D)** deferred scheduled below immediate; **(E)** within-horizon FIFO; **(F)** customer optional + payload; update fake repos. (`rtl`)
+- [ ] **T57** — Manual: Realtime insert for deferred scheduled ticket (AC-28); change `kitchen_priority_horizon_minutes` in DB and confirm sort changes after refetch. (`manual` L2)
+- [ ] **T58** — Append Phase 7 verification to `progress/order-kitchen-queue.md` (leader/implementer). (`manual`)
+
+---
 
 ## Notes for implementer
 

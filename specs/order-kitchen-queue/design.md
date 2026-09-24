@@ -8,6 +8,8 @@ Waiter /orders                          Grillmaster /kitchen
     → useMenuItems                          → useActiveOrders (['active-orders', merchantId])
     → useCartState (client draft)           → useMarkOrderReady mutation
     → ServiceTypeSelector (take_out | delivery)
+    → FulfillmentTimingSelector (immediate | scheduled + ready-by picker)
+    → CustomerContactFields (optional first/last/phone)
     → DeliveryFields (zone optional + fee manual)
     → useSubmitOrder mutation               → useKitchenOrdersRealtime (Supabase channel)
       → submitOrderAction                     → invalidateQueries / cache patch
@@ -49,6 +51,8 @@ sequenceDiagram
   W->>UI: Open /orders
   UI->>DB: fetch menu_items (RLS)
   W->>UI: Choose Para llevar or Delivery
+  W->>UI: Entrega inmediata or Orden posterior (+ ready-by if scheduled)
+  W->>UI: Optional customer name/phone
   alt Delivery
     W->>UI: Enter zone (optional) + delivery fee (manual)
   end
@@ -79,7 +83,7 @@ sequenceDiagram
   Note over RT,DB: Waiter submits elsewhere
   DB-->>RT: INSERT orders
   RT-->>Q: invalidate or patch cache
-  Q-->>K: re-render new ticket (FIFO)
+  Q-->>K: re-render new ticket (priority sort FR-13)
   Note over K: Badge Para llevar or Delivery; zone/fee if delivery
   G->>K: Marcar listo
   K->>DB: UPDATE status served, ready_at
@@ -168,6 +172,46 @@ ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 
 **Delivery insert:** `service_type = 'delivery'`, `delivery_fee` from waiter input (`>= 0`), `delivery_zone` optional.
 
+### Migration increment (2026-09-24)
+
+**File:** `supabase/migrations/<timestamp>_order_fulfillment_and_kitchen_priority.sql`
+
+```sql
+CREATE TYPE order_fulfillment_timing AS ENUM ('immediate', 'scheduled');
+
+ALTER TABLE merchants
+  ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Caracas',
+  ADD COLUMN kitchen_priority_horizon_minutes INT NOT NULL DEFAULT 45
+    CHECK (kitchen_priority_horizon_minutes >= 1 AND kitchen_priority_horizon_minutes <= 480);
+
+COMMENT ON COLUMN merchants.timezone IS 'IANA timezone for waiter scheduled ready-by picker and kitchen HH:mm display.';
+COMMENT ON COLUMN merchants.kitchen_priority_horizon_minutes IS 'Scheduled orders within this many minutes of ready_by_at sort with immediate tickets (urgent tier).';
+
+ALTER TABLE orders
+  ADD COLUMN fulfillment_timing order_fulfillment_timing NOT NULL DEFAULT 'immediate',
+  ADD COLUMN ready_by_at TIMESTAMPTZ NULL,
+  ADD COLUMN customer_first_name TEXT NULL,
+  ADD COLUMN customer_last_name TEXT NULL,
+  ADD COLUMN customer_phone TEXT NULL;
+
+COMMENT ON COLUMN orders.ready_by_at IS 'Customer promised ready/delivery instant (scheduled orders). Not grill ready timestamp — see ready_at.';
+COMMENT ON COLUMN orders.fulfillment_timing IS 'immediate = cook now; scheduled = orden posterior with ready_by_at.';
+
+ALTER TABLE orders ADD CONSTRAINT orders_fulfillment_ready_by_consistency CHECK (
+  (fulfillment_timing = 'immediate' AND ready_by_at IS NULL)
+  OR (fulfillment_timing = 'scheduled' AND ready_by_at IS NOT NULL)
+);
+
+CREATE INDEX idx_orders_ready_by_at ON orders(merchant_id, ready_by_at)
+  WHERE status IN ('pending', 'cooking') AND fulfillment_timing = 'scheduled';
+```
+
+**Backfill:** existing rows remain `fulfillment_timing = immediate`, `ready_by_at NULL`.
+
+**RPC `create_order_with_items`:** extend signature to accept fulfillment + customer fields; preserve atomic insert. **`orders_enforce_kitchen_update_columns` trigger:** grillmaster UPDATE still limited to `status`, `ready_at`, `updated_at` — new columns waiter-set on INSERT only.
+
+**Realtime:** unchanged — INSERT/UPDATE on `orders` still drives kitchen refresh; deferred scheduled tickets appear immediately in list at deferred tier.
+
 ### Domain mapping
 
 | DB column | Domain field |
@@ -177,6 +221,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 | `weight_label` | `weightLabel` |
 | `sent_to_kitchen_at` | `sentToKitchenAt` |
 | `ready_at` | `readyAt` |
+| `ready_by_at` | `readyByAt` |
+| `fulfillment_timing` | `fulfillmentTiming` |
+| `customer_first_name` | `customerFirstName` |
+| `customer_last_name` | `customerLastName` |
+| `customer_phone` | `customerPhone` |
+| `kitchen_priority_horizon_minutes` | `kitchenPriorityHorizonMinutes` (merchant) |
+| `timezone` | `timezone` (merchant) |
 | `delivery_fee` | `deliveryFee` |
 | `delivery_zone` | `deliveryZone` |
 | `server_id` | `serverId` |
@@ -185,21 +236,80 @@ ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 | `total_amount` | `totalAmount` |
 | `unit_price` | `unitPrice` |
 
-### Active kitchen queue filter (domain pure function)
+### Active kitchen queue filter and sort (domain pure functions)
 
 ```typescript
 export const ACTIVE_KITCHEN_STATUSES = ["pending", "cooking"] as const;
+
+export type OrderFulfillmentTiming = "immediate" | "scheduled";
+
+export type KitchenPriorityTier = "urgent" | "deferred";
 
 export function isActiveKitchenOrder(status: OrderStatus): boolean {
   return ACTIVE_KITCHEN_STATUSES.includes(status as (typeof ACTIVE_KITCHEN_STATUSES)[number]);
 }
 
+export function getKitchenPriorityTier(
+  order: Order,
+  now: Date,
+  horizonMinutes: number,
+): KitchenPriorityTier {
+  if (order.fulfillmentTiming === "immediate") {
+    return "urgent";
+  }
+  if (order.readyByAt == null) {
+    return "urgent"; // defensive; DB constraint prevents scheduled null
+  }
+  const minutesUntilReady =
+    (order.readyByAt.getTime() - now.getTime()) / 60_000;
+  return minutesUntilReady <= horizonMinutes ? "urgent" : "deferred";
+}
+
+/** FR-13 — replaces chronological sort for kitchen display. */
+export function sortKitchenQueueOrders(input: {
+  orders: Order[];
+  now: Date;
+  horizonMinutes: number;
+}): Order[] {
+  const { orders, now, horizonMinutes } = input;
+  const withTier = orders.map((order) => ({
+    order,
+    tier: getKitchenPriorityTier(order, now, horizonMinutes),
+  }));
+
+  const urgent = withTier
+    .filter((x) => x.tier === "urgent")
+    .sort(
+      (a, b) =>
+        a.order.sentToKitchenAt.getTime() - b.order.sentToKitchenAt.getTime(),
+    );
+
+  const deferred = withTier
+    .filter((x) => x.tier === "deferred")
+    .sort((a, b) => {
+      const byReady =
+        (a.order.readyByAt?.getTime() ?? 0) -
+        (b.order.readyByAt?.getTime() ?? 0);
+      if (byReady !== 0) return byReady;
+      return (
+        a.order.sentToKitchenAt.getTime() - b.order.sentToKitchenAt.getTime()
+      );
+    });
+
+  return [...urgent, ...deferred].map((x) => x.order);
+}
+
+/** Legacy FIFO helper — not used for kitchen queue after 2026-09-24 increment. */
 export function sortOrdersChronologically(orders: Order[]): Order[] {
   return [...orders].sort(
     (a, b) => a.sentToKitchenAt.getTime() - b.sentToKitchenAt.getTime(),
   );
 }
 ```
+
+**Note:** fix typo in legacy helper if kept — `b.sentToKitchenAt` not `b.order`. Implementer may delete chronological export if unused.
+
+**Use case `listActiveOrders`:** load `horizonMinutes` from merchant (join or cached merchant settings port), pass `now = new Date()`, return `sortKitchenQueueOrders(...)`.
 
 ### Status transition (domain)
 
@@ -270,6 +380,11 @@ export type CartLine = {
 
 export type Cart = {
   serviceType: MvpServiceType;
+  fulfillmentTiming: OrderFulfillmentTiming;
+  readyByAt: Date | null; // required when scheduled; null when immediate
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   deliveryFee: number; // 0 for take_out; >= 0 for delivery
   deliveryZone: string | null; // optional label when delivery
   tableNumber: null; // MVP takeaway/delivery — not collected
@@ -303,8 +418,13 @@ export type Order = {
   deliveryZone: string | null;
   status: OrderStatus;
   totalAmount: number;
+  fulfillmentTiming: OrderFulfillmentTiming;
+  readyByAt: Date | null;
   sentToKitchenAt: Date;
   readyAt: Date | null;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerPhone: string | null;
   createdAt: Date;
   updatedAt: Date;
   lines: OrderLine[];
@@ -353,7 +473,8 @@ export function setServiceType(cart: Cart, serviceType: MvpServiceType): Cart {
 
 ### Validations (Zod — `domain/validations.ts`)
 
-- `submitOrderSchema`: cart lines, `serviceType` in `take_out` | `delivery`, delivery fee rules, side count = 2 for meat SKUs
+- `submitOrderSchema`: cart lines, `serviceType`, **`fulfillmentTiming` + `readyByAt` rules (FR-12; min lead **5 min**, max **7 days** per OQ-18)**, optional customer strings (FR-14), delivery fee rules, side count = 2 for meat SKUs
+- Domain constants: `SCHEDULED_MIN_LEAD_MINUTES = 5`, `SCHEDULED_MAX_DAYS = 7` (OQ-18)
 - **Delivery:** `deliveryFee` required number, `>= 0`; `deliveryZone` optional string (trim, max length e.g. 100)
 - **Takeaway:** reject if `deliveryFee !== 0` or `deliveryZone` set (domain normalizes on service type change)
 - `markOrderReadySchema`: `orderId` UUID
@@ -371,6 +492,11 @@ export interface OrderRepository {
     merchantId: string;
     serverId: string;
     serviceType: MvpServiceType;
+    fulfillmentTiming: OrderFulfillmentTiming;
+    readyByAt: Date | null;
+    customerFirstName: string | null;
+    customerLastName: string | null;
+    customerPhone: string | null;
     deliveryFee: number;
     deliveryZone: string | null;
     lines: CartLine[];
@@ -393,7 +519,7 @@ export interface OrderRepository {
 |----------|----------------|
 | `listMenuItems(merchantId, catalogRepo)` | Delegate list |
 | `submitOrder(cart, actor, catalogRepo, orderRepo)` | Validate, compute `totalAmount`, insert |
-| `listActiveOrders(merchantId, orderRepo)` | Filter/sort via repo or domain helper |
+| `listActiveOrders(merchantId, orderRepo, merchantSettings)` | Active filter + **`sortKitchenQueueOrders`** with `horizonMinutes` + `now` |
 | `markOrderReady(orderId, actor, orderRepo)` | Role check + transition |
 
 ## Infrastructure
@@ -506,6 +632,8 @@ Mobile-first single column; optional two-column on `md+` (menu left, cart right)
 |---------|------|
 | Header | "Registrar pedido" — `section_title` |
 | **Service type** | Segmented control or radio: **Para llevar** (`take_out`) \| **Delivery** (`delivery`). **No dine-in option.** Required before send. |
+| **Fulfillment timing** | Radio: **Entrega inmediata** \| **Orden posterior**. When posterior: **date + time** picker for ready-by (merchant timezone label in helper text). Switching to immediate clears ready-by. |
+| **Customer (optional)** | Collapsible or inline fields: Nombre, Apellido, Teléfono — no asterisk required indicators. |
 | **Delivery fields** | Visible when Delivery selected: optional text "Zona" (`delivery_zone`); required numeric "Costo de envío" (`delivery_fee`, `>= 0`, step 0.01). Hidden/cleared for Para llevar. |
 | Menu | Accordion or tabs by `protein_group` + drinks; sides hidden from direct add (sides only inside meat modal) |
 | Meat add flow | Tap meat SKU → modal/drawer: pick side slot 1 & 2 from side items → confirm quantity |
@@ -517,7 +645,10 @@ Flat cards, hairline borders, no shadows.
 **Suggested components:**
 
 - `ServiceTypeSelector.tsx` — takeaway/delivery toggle
+- `FulfillmentTimingSelector.tsx` — immediate vs scheduled + ready-by datetime (local merchant TZ)
+- `CustomerContactFields.tsx` — optional name/phone
 - `DeliveryDetailsFields.tsx` — zone + fee inputs
+- `formatReadyByKitchenLabel(readyByAt, merchantTimezone, now)` — **Para las HH:mm** / date when not today
 - `OrderTotalsSummary.tsx` — subtotal, fee, total with `formatMoneyUsdEs`
 
 ### Kitchen — `/kitchen` (`KitchenQueueView`)
@@ -529,7 +660,7 @@ Per DESIGN.md **Live Order Queue Item**:
 | Element | Spec |
 |---------|------|
 | Container | Vertical stack of flat banners, alternating subtle bg (`bg-card` / `bg-muted/30`) |
-| Left | Service pill: **Para llevar** or **Delivery** — `primary_translucent` badge. For delivery: secondary line with zone (if set) and formatted delivery fee. |
+| Left | Service pill: **Para llevar** or **Delivery**. Secondary pill: **Inmediato** (muted) or **Para las HH:mm** (scheduled). For delivery: zone + fee when set. Optional customer name/phone line. |
 | Center | Bullet list: `{qty}x {name} ({weight})` + indented sides `· yuca · arepa` |
 | Right | Elapsed mm:ss since `sentToKitchenAt`; turns `text-primary` if > `KITCHEN_SLA_MINUTES` (default 20) |
 | Action | **Marcar listo** — primary button, min 44px height |
@@ -626,7 +757,7 @@ Automated verification spans **three layers**. RTL integration is **required** f
 - Implement `MenuCatalogRepository.listActiveMenu` returning a **fixture catalog** aligned with seed data (beef ½ kg, drinks, yuca/arepa/ensalada sides).
 - Implement `OrderRepository.insertOrder`, `listActiveOrders`, `markReady` against a **mutable in-memory array** scoped to `merchantId`.
 - `insertOrder` assigns ids, sets `status: pending`, `sentToKitchenAt`, computes and stores `totalAmount`, snapshots sides on lines.
-- `listActiveOrders` filters `pending` \| `cooking`, sorts by `sentToKitchenAt` ASC (domain helper).
+- `listActiveOrders` filters `pending` \| `cooking`, sorts via **`sortKitchenQueueOrders`** (horizon default 45 unless merchant override in test merchant fixture).
 - `markReady` transitions to `served`, sets `readyAt`, removes from active filter.
 - Export factory `createInMemoryOrderRepos()` returning `{ catalogRepo, orderRepo, getOrdersSnapshot }` for assertions.
 
@@ -703,6 +834,7 @@ Add devDependencies: `@testing-library/react`, `@testing-library/user-event`, `@
 | `src/domains/orders/presentation/testing/render-with-order-providers.tsx` | RTL render helper |
 | `src/domains/orders/presentation/testing/setup-integration.ts` | jest-dom import, cleanup |
 | `src/domains/orders/presentation/order-kitchen-flow.integration.test.tsx` | **Primary** — takeaway + delivery + mark ready scenarios |
+| `src/domains/orders/domain/kitchen-queue-sort.test.ts` | **Priority sort** — immediate vs deferred, horizon boundary, FIFO within urgent tier |
 | `src/domains/orders/domain/*.test.ts` | Unit tests (unchanged) |
 | `src/domains/orders/application/use-cases.test.ts` | Application unit tests (unchanged) |
 
@@ -754,6 +886,8 @@ Document publication enablement in `docs/supabase.md` when implementer adds tabl
 | Missing sides | Inline Spanish on meat modal |
 | Empty cart submit | Disabled button |
 | Delivery without fee field | Inline "Ingresa el costo de envío" |
+| Scheduled without ready-by | Inline "Indica la hora de entrega" |
+| Ready-by in past | Inline "La hora debe ser futura" |
 | Invalid fee (< 0) | Inline validation |
 | RLS / network failure | Toast "No se pudo enviar el pedido." |
 | Mark ready on inactive order | Toast "Pedido no disponible." |
@@ -779,7 +913,10 @@ Document publication enablement in `docs/supabase.md` when implementer adds tabl
 | `src/domains/orders/infrastructure/*-action.ts` | Server actions |
 | `src/domains/orders/presentation/format-money.ts` | es-ES USD helper |
 | `src/domains/orders/presentation/ServiceTypeSelector.tsx` | Takeaway/delivery |
+| `src/domains/orders/presentation/FulfillmentTimingSelector.tsx` | Immediate / scheduled |
+| `src/domains/orders/presentation/CustomerContactFields.tsx` | Optional customer |
 | `src/domains/orders/presentation/DeliveryDetailsFields.tsx` | Zone + fee |
+| `supabase/migrations/<ts>_order_fulfillment_and_kitchen_priority.sql` | fulfillment + customer + merchant horizon |
 | `src/domains/orders/presentation/OrderRegistryView.tsx` | Waiter UI |
 | `src/domains/orders/presentation/KitchenQueueView.tsx` | Kitchen UI |
 | `src/app/(app)/orders/page.tsx` | Wire view |

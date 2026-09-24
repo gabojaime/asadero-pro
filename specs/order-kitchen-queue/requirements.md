@@ -23,10 +23,12 @@ On `/orders`, a **waiter** (also **admin** for testing) builds a **draft cart** 
    - **Optional:** free-text `delivery_zone` label (e.g. "Centro", "Este") for kitchen/dispatch context.
    - **No auto-calculation** from a zones pricing table (no zone CRUD in MVP).
 4. **Takeaway:** `delivery_fee` must be `0` (or `NULL` stored as zero); `delivery_zone` must be empty/null.
-5. Add menu lines with quantity ≥ 1.
-6. For each **meat plate** line (`item_kind = meat_plate`), user must pick **exactly two sides** from the side catalog per OQ-2.
-7. Drinks and other non-meat items do **not** require sides unless OQ-1 defines otherwise.
-8. Cart mutations use **immutable** pure functions (spread/map — no `.push()` on shared state) per [docs/conventions.md](../../docs/conventions.md).
+5. **Fulfillment timing (required):** **Entrega inmediata** (`fulfillment_timing = immediate`) or **Orden posterior** (`fulfillment_timing = scheduled`). Default selection: immediate. When scheduled, waiter must set **ready-by** date/time (customer promised ready/delivery time). See FR-12.
+6. **Customer (optional):** first name, last name, phone — may be left blank; submit is not blocked when empty. See FR-14.
+7. Add menu lines with quantity ≥ 1.
+8. For each **meat plate** line (`item_kind = meat_plate`), user must pick **exactly two sides** from the side catalog per OQ-2.
+9. Drinks and other non-meat items do **not** require sides unless OQ-1 defines otherwise.
+10. Cart mutations use **immutable** pure functions (spread/map — no `.push()` on shared state) per [docs/conventions.md](../../docs/conventions.md).
 
 Display running totals:
 
@@ -52,6 +54,9 @@ On submit:
    - `delivery_zone` = optional label or `NULL`
    - `status` = **`pending`** (enters kitchen queue)
    - `total_amount` = domain-computed **items subtotal + delivery_fee**
+   - `fulfillment_timing` = `immediate` | `scheduled` (FR-12)
+   - `ready_by_at` = `NULL` when immediate; required TIMESTAMPTZ when scheduled (stored UTC; captured in merchant local time per OQ-14)
+   - Optional `customer_first_name`, `customer_last_name`, `customer_phone` (trimmed or `NULL`)
    - Timestamps per OQ-4 (`sent_to_kitchen_at` set on insert)
 3. Insert `order_items` rows with snapshotted `unit_price` and `subtotal`.
 4. Insert side rows per OQ-2 (`order_item_sides`).
@@ -64,10 +69,12 @@ On submit:
 On `/kitchen`, **grill_master** and **admin** see **active** orders for the tenant:
 
 - **Filter:** `status IN ('pending', 'cooking')`.
-- **Sort:** `created_at ASC` (FIFO — oldest at top).
+- **Sort:** domain function **`sortKitchenQueueOrders(orders, now, horizonMinutes)`** (FR-13) — not raw SQL FIFO. Repo may fetch active orders unsorted or with loose `sent_to_kitchen_at` order; **presentation/application applies domain sort** before render.
 - Each row shows:
   - Service-type badge: **Para llevar** or **Delivery** (not dine-in for MVP orders).
+  - Fulfillment badge: **Inmediato** or **Para las {HH:mm}** (merchant-local clock on scheduled); optional secondary **Para las {date}** when ready-by is not today.
   - For delivery: optional zone label and delivery fee when present.
+  - Optional customer line: `{firstName} {lastName}` and/or phone when provided.
   - Waiter name if available.
   - Line items with quantities, **two sides per meat line**.
   - Elapsed time since `sent_to_kitchen_at` or `created_at`.
@@ -147,11 +154,84 @@ The feature **must** include automated **React Testing Library (RTL)** integrati
 | What is real | Domain pure functions, application use cases, presentation components, Query hooks/mutations, Spanish UI copy |
 | What is mocked | Supabase repos, server actions (delegate to use cases + fakes), `useKitchenOrdersRealtime` (no-op subscribe; rely on mutation `invalidateQueries` or explicit invalidation — same outcome as production cache refresh) |
 | Shared store | One in-memory store per test so **waiter submit → kitchen queue → mark ready** can run as a **single scenario** (render both surfaces sequentially or a thin test harness wrapping both views with one `QueryClient`) |
-| Scenarios (minimum) | **(A)** Takeaway: Para llevar, meat plate + two sides, submit **Enviar a cocina**, assert kitchen ticket. **(B)** Delivery: zone + manual fee, assert totals and kitchen badge/zone/fee. **(C)** Mark ready: pending ticket visible → **Marcar listo** → leaves active queue; fake repo `status = served` |
+| Scenarios (minimum) | **(A)** Takeaway immediate. **(B)** Delivery + fee/zone. **(C)** Mark ready. **(D)** Scheduled deferred (> horizon) below immediate. **(E)** Scheduled within horizon mixed FIFO with immediate. **(F)** Optional customer fields on ticket + payload |
 | Assertions | **UI:** service badge (Para llevar / Delivery), line quantities/names, two sides per meat line, formatted es-ES USD totals. **Payload:** last inserted order in fake repo has correct `service_type`, `delivery_fee`, `delivery_zone`, line items, sides, `total_amount = items subtotal + delivery_fee` |
 | Out of RTL scope | Live Realtime <3s (AC-6 manual), RLS (AC-11 manual), RBAC route redirects (AC-9 manual), Cypress/Playwright |
 
 **OQ-6 is unchanged:** RTL simulates cache updates; **real** Supabase Realtime remains manual L2 verification.
+
+### FR-12 — Fulfillment timing at registration (immediate vs scheduled)
+
+Waiter must choose one of two fulfillment modes before send:
+
+| UI (Spanish) | DB `fulfillment_timing` | `ready_by_at` |
+|--------------|-------------------------|---------------|
+| Entrega inmediata | `immediate` | `NULL` |
+| Orden posterior | `scheduled` | Required — customer promised ready/delivery instant |
+
+Rules:
+
+1. **Immediate:** order enters kitchen queue with normal priority tier (FR-13). No ready-by picker shown.
+2. **Scheduled:** waiter selects **ready-by** using date + time controls (minimum: at least **5 minutes** after submit `now` in merchant timezone; maximum: **7 calendar days** ahead for MVP — prevents typos far in the future).
+3. Order is **sent to kitchen on submit** (`status = pending`, `sent_to_kitchen_at` set) regardless of timing mode — deferred tickets remain visible in Realtime but sort to the **deferred tier** until within horizon (FR-13).
+4. **`ready_at`** (existing column) remains **grillmaster mark-ready timestamp only** — do not reuse for customer promise (OQ-13).
+
+Validation (domain + Zod):
+
+- Reject `scheduled` without `readyByAt`.
+- Reject `readyByAt` in the past (relative to submit `now` in merchant timezone per OQ-14).
+- Reject `readyByAt` **< 5 minutes** after submit `now` (OQ-18b — **minimum lead**).
+- Reject `readyByAt` **> 7 calendar days** after submit `now` in merchant timezone (OQ-18 — **maximum window**).
+- Reject `immediate` with non-null `readyByAt` (normalize cart on mode switch).
+
+### FR-13 — Kitchen queue priority sort (configurable horizon)
+
+**Horizon `N`:** minutes until `ready_by_at` below which a **scheduled** order is treated like immediate for queue ordering. Default **`N = 45`**. Stored per merchant: **`merchants.kitchen_priority_horizon_minutes`** (OQ-15). Admin may change via SQL / future settings UI; not waiter-editable.
+
+**Pure domain function** (Vitest required):
+
+```typescript
+type KitchenSortInput = {
+  orders: Order[]; // active only; includes fulfillmentTiming, readyByAt, sentToKitchenAt
+  now: Date;
+  horizonMinutes: number; // from merchant setting at query time
+};
+
+export function sortKitchenQueueOrders(input: KitchenSortInput): Order[];
+```
+
+**Definitions** (for `scheduled` orders with non-null `readyByAt`):
+
+- `minutesUntilReady = (readyByAt.getTime() - now.getTime()) / 60_000`
+- **Priority tier `urgent`:** `fulfillmentTiming === 'immediate'` **OR** (`scheduled` AND `minutesUntilReady <= horizonMinutes`)
+- **Priority tier `deferred`:** `scheduled` AND `minutesUntilReady > horizonMinutes`
+
+**Sort order (stable):**
+
+1. All **`urgent`** tickets first, sorted by **`sentToKitchenAt ASC`** (FIFO among immediates and soon-due scheduled — avoids starving tickets about to become due).
+2. Then all **`deferred`** tickets, sorted by **`readyByAt ASC`**, then **`sentToKitchenAt ASC`** as tiebreaker.
+
+**Immediate orders** never use `readyByAt` for tiering (always `urgent`).
+
+**Edge cases:**
+
+- `horizonMinutes` must be ≥ 1; domain clamps or rejects 0 from config (merchant default 45).
+- At exact boundary (`minutesUntilReady === horizonMinutes`), treat as **`urgent`** (inclusive).
+- Clock skew: sort uses server/application `now` passed into use case (same instant for whole list).
+
+Replace **`sortOrdersChronologically`** as the active-queue ordering for kitchen UI and `listActiveOrders` use case return value. Keep chronological helper only if still useful for tests; kitchen path must call **`sortKitchenQueueOrders`**.
+
+### FR-14 — Optional customer fields on order
+
+Optional at submit (all nullable in DB):
+
+| Field | Column | Validation (when non-empty) |
+|-------|--------|----------------------------|
+| First name | `customer_first_name` | trim, 1–80 chars |
+| Last name | `customer_last_name` | trim, 1–80 chars |
+| Phone | `customer_phone` | trim, 7–20 chars, digits/`+`/spaces/hyphens |
+
+Display on kitchen ticket when any value present. **No PII in client logs** beyond order id (NFR-6 unchanged). RLS: same tenant staff SELECT as orders.
 
 ## Non-functional requirements
 
@@ -195,7 +275,7 @@ Log order submit and mark-ready failures with order id + merchant id (no PII bey
 | AC-4 | Cart total updates correctly when quantity changes (items subtotal) | Vitest |
 | AC-5 | Send creates `orders` + `order_items` (+ sides) with correct `total_amount` = items + delivery fee | RTL integration + Vitest (use case) + Manual L2 (live DB) |
 | AC-6 | New order appears on `/kitchen` without refresh within 3s | **Manual L2 (Realtime only)** — RTL covers invalidation/cache refresh, not live channel latency |
-| AC-7 | Kitchen list sorted oldest-first | RTL integration + Vitest (sort helper) + Manual L2 |
+| AC-7 | Kitchen list sorted by **priority tiers** (FR-13), not naive FIFO | RTL integration + Vitest (`sortKitchenQueueOrders`) + Manual L2 |
 | AC-8 | Mark ready removes ticket from active queue | RTL integration + Manual L2 |
 | AC-9 | RBAC: waiter blocked from `/kitchen`; grillmaster can access | Manual L2 (RBAC regression) |
 | AC-10 | Waiter cannot mark ready (UI hidden + mutation rejected) | Manual L2 + RLS |
@@ -212,6 +292,11 @@ Log order submit and mark-ready failures with order id + merchant id (no PII bey
 | AC-21 | RTL: delivery flow — manual fee + optional zone; UI and fake-repo payload show `service_type = delivery`, `delivery_fee`, `total_amount = items + fee` | RTL integration |
 | AC-22 | RTL: **Marcar listo** on pending ticket removes it from active kitchen list; fake repo records `status = served` and `ready_at`; pending orders remain until marked ready | RTL integration |
 | AC-23 | RTL tests use Spanish UI queries (`Enviar a cocina`, `Para llevar`, `Delivery`, `Marcar listo`) and es-ES USD display assertions | RTL integration |
+| AC-24 | Waiter can submit **Entrega inmediata** without ready-by; scheduled requires ready-by; immediate persists `fulfillment_timing = immediate`, `ready_by_at = NULL` | Vitest + RTL + Manual L2 |
+| AC-25 | Scheduled order with ready-by **> N minutes** away appears **below** immediate tickets; within **≤ N minutes** sorts with immediates by `sent_to_kitchen_at` | Vitest (`sortKitchenQueueOrders`) + RTL |
+| AC-26 | Kitchen ticket shows **Inmediato** or scheduled **Para las HH:mm** badge; optional customer name/phone when set | RTL + Manual L2 |
+| AC-27 | Submit with empty customer fields succeeds; non-empty fields persisted on `orders` | Vitest + RTL |
+| AC-28 | Realtime: new scheduled (deferred) order appears on `/kitchen` without refresh; sort updates when horizon boundary crossed (manual clock or wait) | Manual L2 (Realtime); Vitest for sort at boundary |
 
 ## Approved decisions (2026-09-12)
 
@@ -328,13 +413,67 @@ Shared helper in presentation layer (see [design.md](./design.md)).
 
 Update `docs/database-schema.md` after migration lands.
 
+## Approved decisions (2026-09-24) — fulfillment, sort, customer
+
+Human approved **2026-09-24**. **Phase 7 implementation (T48–T58) is unblocked.**
+
+### OQ-13 — Customer promised time vs kitchen ready timestamp — APPROVED
+
+| Concept | Column | Type |
+|---------|--------|------|
+| Customer promised ready/delivery | **`ready_by_at`** | `TIMESTAMPTZ NULL` |
+| Grillmaster marked ready | **`ready_at`** (existing) | unchanged |
+
+Add enum **`order_fulfillment_timing`**: `immediate`, `scheduled`. Column **`orders.fulfillment_timing`** `NOT NULL DEFAULT 'immediate'`.
+
+Constraint (migration): `(fulfillment_timing = 'immediate' AND ready_by_at IS NULL) OR (fulfillment_timing = 'scheduled' AND ready_by_at IS NOT NULL)`.
+
+### OQ-14 — Timezone for scheduled picker — APPROVED
+
+- Store instants as **UTC TIMESTAMPTZ** in Postgres (standard).
+- Waiter UI captures **merchant-local** date/time using **`merchants.timezone`** IANA string (e.g. `America/Caracas`), **`NOT NULL DEFAULT 'America/Caracas'`** on new column (OQ-17).
+- Conversion at submit: server or use case converts local parts → UTC using merchant timezone (use `Intl` / `@date-fns/tz` or equivalent — implementer choice).
+- MVP: single timezone per merchant; no per-user timezone.
+
+### OQ-15 — Kitchen priority horizon configurability — APPROVED
+
+- **`merchants.kitchen_priority_horizon_minutes INT NOT NULL DEFAULT 45`**
+- Check: `>= 1 AND <= 480` (8 hours max).
+- **Changeable:** admin updates merchant row (SQL seed, Supabase dashboard, or future **merchant settings** UI — UI out of this increment).
+- **Not** env-only (user required changeable interval); env override optional for local dev only, production reads DB column.
+- Loaded once per kitchen session / active-orders query with merchant profile or dedicated merchant settings read.
+
+### OQ-16 — Optional customer columns — APPROVED
+
+On **`orders`** (extend, no parallel table):
+
+- `customer_first_name TEXT NULL`
+- `customer_last_name TEXT NULL`
+- `customer_phone TEXT NULL`
+
+All optional; no composite "customer" entity for MVP.
+
+### OQ-17 — Default merchant IANA timezone — APPROVED
+
+- **`merchants.timezone`** default for new merchants: **`America/Caracas`** (not `America/Bogota`).
+- Seed and migrations must use this default; existing merchants backfill to column default on migration.
+
+### OQ-18 — Scheduled ready-by window — APPROVED
+
+| Rule | Value |
+|------|--------|
+| **Minimum lead** (OQ-18b) | **5 minutes** after submit `now` (merchant timezone) |
+| **Maximum horizon** | **7 calendar days** ahead of submit `now` (merchant timezone) |
+
+Domain constants (implementer): e.g. `SCHEDULED_MIN_LEAD_MINUTES = 5`, `SCHEDULED_MAX_DAYS = 7`. Enforced in `validateCartForSubmit` / Zod (FR-12).
+
 ## Verification type
 
 **Required:** `verification: automated` in `feature_list.json` — **includes RTL integration**, not domain-only + manual-only for the order/kitchen happy path.
 
 | Slice | Tag |
 |-------|-----|
-| Cart totals, delivery fee, side validation, status helpers, sort order | `vitest` (node) |
+| Cart totals, delivery fee, side validation, status helpers, **`sortKitchenQueueOrders`**, fulfillment validation | `vitest` (node) |
 | Waiter submit → kitchen queue → mark ready (UI + Query + fakes) | `rtl` (jsdom) — **required** |
 | Live Supabase Realtime latency & reconnect (OQ-6) | `manual` L2 |
 | RLS cross-tenant, RBAC browser smoke, seed against live DB | `manual` L3–L4 |
