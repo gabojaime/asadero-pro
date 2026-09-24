@@ -203,31 +203,37 @@ export type Database = {
           address: string | null
           created_at: string
           id: string
+          kitchen_priority_horizon_minutes: number
           monthly_fixed_overhead: number | null
           name: string
           phone: string | null
           seating_table_count: number | null
           target_food_cost_pct: number
+          timezone: string
         }
         Insert: {
           address?: string | null
           created_at?: string
           id?: string
+          kitchen_priority_horizon_minutes?: number
           monthly_fixed_overhead?: number | null
           name: string
           phone?: string | null
           seating_table_count?: number | null
           target_food_cost_pct?: number
+          timezone?: string
         }
         Update: {
           address?: string | null
           created_at?: string
           id?: string
+          kitchen_priority_horizon_minutes?: number
           monthly_fixed_overhead?: number | null
           name?: string
           phone?: string | null
           seating_table_count?: number | null
           target_food_cost_pct?: number
+          timezone?: string
         }
         Relationships: []
       }
@@ -312,12 +318,17 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          customer_first_name: string | null
+          customer_last_name: string | null
+          customer_phone: string | null
           delivery_fee: number
           delivery_zone: string | null
+          fulfillment_timing: Database["public"]["Enums"]["order_fulfillment_timing"]
           id: string
           inventory_deducted_at: string | null
           merchant_id: string
           ready_at: string | null
+          ready_by_at: string | null
           sent_to_kitchen_at: string | null
           server_id: string | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -328,12 +339,17 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_phone?: string | null
           delivery_fee?: number
           delivery_zone?: string | null
+          fulfillment_timing?: Database["public"]["Enums"]["order_fulfillment_timing"]
           id?: string
           inventory_deducted_at?: string | null
           merchant_id: string
           ready_at?: string | null
+          ready_by_at?: string | null
           sent_to_kitchen_at?: string | null
           server_id?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
@@ -344,12 +360,17 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_first_name?: string | null
+          customer_last_name?: string | null
+          customer_phone?: string | null
           delivery_fee?: number
           delivery_zone?: string | null
+          fulfillment_timing?: Database["public"]["Enums"]["order_fulfillment_timing"]
           id?: string
           inventory_deducted_at?: string | null
           merchant_id?: string
           ready_at?: string | null
+          ready_by_at?: string | null
           sent_to_kitchen_at?: string | null
           server_id?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
@@ -629,9 +650,14 @@ export type Database = {
       }
       create_order_with_items: {
         Args: {
+          p_customer_first_name: string | null
+          p_customer_last_name: string | null
+          p_customer_phone: string | null
           p_delivery_fee: number
           p_delivery_zone: string | null
+          p_fulfillment_timing: Database["public"]["Enums"]["order_fulfillment_timing"]
           p_lines: Json
+          p_ready_by_at: string | null
           p_service_type: Database["public"]["Enums"]["service_type"]
           p_total_amount: number
         }
@@ -662,6 +688,7 @@ export type Database = {
     }
     Enums: {
       menu_item_kind: "meat_plate" | "drink" | "side"
+      order_fulfillment_timing: "immediate" | "scheduled"
       order_status: "pending" | "cooking" | "served" | "completed" | "cancelled"
       service_type: "dine_in" | "take_out" | "delivery"
       unit_of_measure: "kilogram" | "unit"
