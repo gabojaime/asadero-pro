@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { OrderDto } from "../infrastructure/query-adapters";
+import { getKitchenPriorityTier } from "../domain/order-status";
 import { ORDER_COPY, KITCHEN_SLA_MINUTES } from "./copy";
 import { formatMoneyUsdEs } from "./format-money";
+import { formatReadyByKitchenLabel } from "./format-ready-by";
 import { Badge } from "@/shared/presentation/ui/badge";
 import { Button } from "@/shared/presentation/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +13,8 @@ import { cn } from "@/lib/utils";
 type KitchenOrderCardProps = {
   order: OrderDto;
   index: number;
+  merchantTimezone: string;
+  kitchenPriorityHorizonMinutes: number;
   canMarkReady: boolean;
   isMarking: boolean;
   onMarkReady: (orderId: string) => void;
@@ -36,9 +40,22 @@ function serviceLabel(serviceType: string): string {
     : ORDER_COPY.serviceTakeOut;
 }
 
+function formatCustomerLine(order: OrderDto): string | null {
+  const name = [order.customerFirstName, order.customerLastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (name && order.customerPhone) {
+    return `${name} · ${order.customerPhone}`;
+  }
+  return name || order.customerPhone || null;
+}
+
 export function KitchenOrderCard({
   order,
   index,
+  merchantTimezone,
+  kitchenPriorityHorizonMinutes,
   canMarkReady,
   isMarking,
   onMarkReady,
@@ -56,18 +73,50 @@ export function KitchenOrderCard({
   }, [order.sentToKitchenAt]);
 
   const slaBreached = isSlaBreached(order.sentToKitchenAt);
+  const priorityTier = getKitchenPriorityTier(
+    {
+      fulfillmentTiming:
+        order.fulfillmentTiming === "scheduled" ? "scheduled" : "immediate",
+      readyByAt: order.readyByAt ? new Date(order.readyByAt) : null,
+    },
+    new Date(),
+    kitchenPriorityHorizonMinutes,
+  );
+  const customerLine = formatCustomerLine(order);
+  const fulfillmentBadgeLabel =
+    order.fulfillmentTiming === "scheduled" && order.readyByAt
+      ? formatReadyByKitchenLabel(order.readyByAt, merchantTimezone)
+      : ORDER_COPY.fulfillmentImmediateBadge;
 
   return (
     <article
       className={cn(
-        "grid gap-4 border border-border p-4 md:grid-cols-[180px_1fr_auto] md:items-center",
-        index % 2 === 0 ? "bg-card" : "bg-muted/30",
+        "grid gap-4 border p-4 md:grid-cols-[180px_1fr_auto] md:items-center",
+        priorityTier === "deferred"
+          ? "border-border/60 bg-muted/20 opacity-90"
+          : "border-border",
+        priorityTier !== "deferred" && index % 2 === 0 ? "bg-card" : "",
+        priorityTier !== "deferred" && index % 2 !== 0 ? "bg-muted/30" : "",
       )}
     >
       <div className="flex flex-col gap-2">
         <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">
           {serviceLabel(order.serviceType)}
         </Badge>
+        <Badge
+          variant="outline"
+          className={cn(
+            "w-fit",
+            order.fulfillmentTiming === "immediate"
+              ? "text-muted-foreground"
+              : "border-primary/30 text-primary",
+          )}
+        >
+          {fulfillmentBadgeLabel}
+        </Badge>
+        {customerLine ? (
+          <p className="text-[13px] text-muted-foreground">{customerLine}</p>
+        ) : null}
         {order.serviceType === "delivery" ? (
           <div className="text-[13px] text-muted-foreground">
             {order.deliveryZone ? <p>{order.deliveryZone}</p> : null}

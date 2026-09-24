@@ -8,7 +8,10 @@ import {
   useActiveOrders,
   useKitchenOrdersRealtime,
   useMarkOrderReady,
+  useMerchantKitchenSettings,
 } from "../infrastructure/query-adapters";
+import { DEFAULT_MERCHANT_TIMEZONE } from "../domain/merchant-local-time";
+import { DEFAULT_KITCHEN_PRIORITY_HORIZON_MINUTES } from "../domain/entities";
 import { KitchenOrderCard } from "./KitchenOrderCard";
 import { ORDER_COPY } from "./copy";
 import { Skeleton } from "@/shared/presentation/ui/skeleton";
@@ -38,6 +41,13 @@ export function KitchenQueueView() {
 
   const { isSubscribed, isReconnecting, isRealtimeDisabled } =
     useKitchenOrdersRealtime(merchantId);
+  const kitchenSettingsQuery = useMerchantKitchenSettings(merchantId);
+  const merchantTimezone =
+    kitchenSettingsQuery.data?.timezone ?? DEFAULT_MERCHANT_TIMEZONE;
+  const kitchenPriorityHorizonMinutes =
+    kitchenSettingsQuery.data?.kitchenPriorityHorizonMinutes ??
+    DEFAULT_KITCHEN_PRIORITY_HORIZON_MINUTES;
+
   const ordersQuery = useActiveOrders(merchantId, {
     realtimeSubscribed: isSubscribed,
     realtimeDisabled: isRealtimeDisabled,
@@ -105,6 +115,8 @@ export function KitchenQueueView() {
               key={order.id}
               order={order}
               index={index}
+              merchantTimezone={merchantTimezone}
+              kitchenPriorityHorizonMinutes={kitchenPriorityHorizonMinutes}
               canMarkReady={canMarkReady}
               isMarking={markReadyMutation.isPending}
               onMarkReady={(orderId) => void handleMarkReady(orderId)}

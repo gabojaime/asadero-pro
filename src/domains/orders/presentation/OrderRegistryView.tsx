@@ -6,17 +6,29 @@ import type { SessionProfile } from "@/domains/auth/domain/entities";
 import {
   addLineToCart,
   removeLine,
+  setCustomerFirstName,
+  setCustomerLastName,
+  setCustomerPhone,
   setDeliveryFee,
   setDeliveryZone,
+  setFulfillmentTiming,
+  setReadyByAt,
   setServiceType,
   updateLineQuantity,
 } from "../domain/cart";
+import {
+  buildMinimumScheduledReadyBy,
+  DEFAULT_MERCHANT_TIMEZONE,
+} from "../domain/merchant-local-time";
 import { createEmptyCart, type Cart, type MenuItem } from "../domain/entities";
 import { OrderError } from "../domain/errors";
 import {
   useMenuItems,
+  useMerchantKitchenSettings,
   useSubmitOrder,
 } from "../infrastructure/query-adapters";
+import { CustomerContactFields } from "./CustomerContactFields";
+import { FulfillmentTimingSelector } from "./FulfillmentTimingSelector";
 import { CartPanel } from "./CartPanel";
 import { DeliveryDetailsFields } from "./DeliveryDetailsFields";
 import { MeatPlateSidePicker } from "./MeatPlateSidePicker";
@@ -51,9 +63,13 @@ export function OrderRegistryView() {
   const [selectedMeat, setSelectedMeat] = useState<MenuItem | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [feeError, setFeeError] = useState<string | null>(null);
+  const [readyByError, setReadyByError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const menuQuery = useMenuItems(merchantId);
+  const kitchenSettingsQuery = useMerchantKitchenSettings(merchantId);
+  const merchantTimezone =
+    kitchenSettingsQuery.data?.timezone ?? DEFAULT_MERCHANT_TIMEZONE;
   const submitMutation = useSubmitOrder(profile);
 
   const menuItems = useMemo(
@@ -127,6 +143,7 @@ export function OrderRegistryView() {
   const handleSubmit = async () => {
     setSubmitError(null);
     setFeeError(null);
+    setReadyByError(null);
     setStatusMessage(null);
 
     const cartToSubmit = normalizeCartForSubmit(cart);
@@ -145,6 +162,9 @@ export function OrderRegistryView() {
         setSubmitError(error.message);
         if (error.fieldErrors?.deliveryFee) {
           setFeeError(error.fieldErrors.deliveryFee);
+        }
+        if (error.fieldErrors?.readyByAt) {
+          setReadyByError(error.fieldErrors.readyByAt);
         }
         return;
       }
@@ -176,6 +196,43 @@ export function OrderRegistryView() {
           value={cart.serviceType}
           onChange={(serviceType) =>
             setCart((current) => setServiceType(current, serviceType))
+          }
+        />
+
+        <FulfillmentTimingSelector
+          fulfillmentTiming={cart.fulfillmentTiming}
+          readyByAt={cart.readyByAt}
+          merchantTimezone={merchantTimezone}
+          readyByError={readyByError}
+          onTimingChange={(timing) =>
+            setCart((current) => {
+              let next = setFulfillmentTiming(current, timing);
+              if (timing === "scheduled" && next.readyByAt == null) {
+                next = setReadyByAt(
+                  next,
+                  buildMinimumScheduledReadyBy(merchantTimezone),
+                );
+              }
+              return next;
+            })
+          }
+          onReadyByChange={(readyByAt) =>
+            setCart((current) => setReadyByAt(current, readyByAt))
+          }
+        />
+
+        <CustomerContactFields
+          firstName={cart.customerFirstName}
+          lastName={cart.customerLastName}
+          phone={cart.customerPhone}
+          onFirstNameChange={(value) =>
+            setCart((current) => setCustomerFirstName(current, value))
+          }
+          onLastNameChange={(value) =>
+            setCart((current) => setCustomerLastName(current, value))
+          }
+          onPhoneChange={(value) =>
+            setCart((current) => setCustomerPhone(current, value))
           }
         />
 
