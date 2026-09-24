@@ -5,10 +5,16 @@
  * Currency display: Intl es-ES USD (e.g. 24,00 US$)
  * Fake in-memory repos via OrdersTestProviders (no Supabase client in presentation tests)
  */
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
+import {
+  addCalendarDaysToDayKey,
+  DEFAULT_MERCHANT_TIMEZONE,
+  formatCalendarDayKey,
+  getLocalTimeParts,
+} from "../domain/merchant-local-time";
 import {
   AREPA_ID,
   TEST_MERCHANT_ID,
@@ -66,10 +72,54 @@ async function clickSendToKitchen() {
   await userEvent.click(buttons[buttons.length - 1]!);
 }
 
-async function addBeefHalfKgWithSides() {
-  await userEvent.click(
-    await screen.findByRole("button", { name: /Beef 1\/2 kg/i }),
+async function selectFulfillmentScheduledDefault() {
+  const scheduledButtons = screen.getAllByRole("button", {
+    name: ORDER_COPY.fulfillmentScheduled,
+  });
+  await userEvent.click(scheduledButtons[scheduledButtons.length - 1]!);
+}
+
+async function selectFulfillmentScheduledFarFuture() {
+  await selectFulfillmentScheduledDefault();
+  const farDayKey = addCalendarDaysToDayKey(
+    formatCalendarDayKey(DEFAULT_MERCHANT_TIMEZONE),
+    2,
   );
+  const dateInputs = screen.getAllByLabelText(ORDER_COPY.readyByDateLabel);
+  fireEvent.change(dateInputs[dateInputs.length - 1]!, {
+    target: { value: farDayKey },
+  });
+}
+
+async function selectFulfillmentScheduledWithinHorizon() {
+  await selectFulfillmentScheduledDefault();
+  const readyBy = new Date(Date.now() + 20 * 60 * 1000);
+  const dayKey = formatCalendarDayKey(DEFAULT_MERCHANT_TIMEZONE, readyBy);
+  const parts = getLocalTimeParts(readyBy, DEFAULT_MERCHANT_TIMEZONE);
+  const timeValue = `${parts.hour}:${parts.minute}`;
+
+  const dateInputs = await screen.findAllByLabelText(ORDER_COPY.readyByDateLabel);
+  fireEvent.change(dateInputs[dateInputs.length - 1]!, {
+    target: { value: dayKey },
+  });
+  const timeInputs = screen.getAllByLabelText(ORDER_COPY.readyByTimeLabel);
+  fireEvent.change(timeInputs[timeInputs.length - 1]!, {
+    target: { value: timeValue },
+  });
+}
+
+async function selectFulfillmentImmediate() {
+  const immediateButtons = screen.getAllByRole("button", {
+    name: ORDER_COPY.fulfillmentImmediate,
+  });
+  await userEvent.click(immediateButtons[immediateButtons.length - 1]!);
+}
+
+async function addBeefHalfKgWithSides() {
+  const beefButtons = await screen.findAllByRole("button", {
+    name: /Beef 1\/2 kg/i,
+  });
+  await userEvent.click(beefButtons[beefButtons.length - 1]!);
   await pickSide(ORDER_COPY.sideSlot1, "Yuca");
   await pickSide(ORDER_COPY.sideSlot2, "Arepa");
   await userEvent.click(
@@ -78,6 +128,10 @@ async function addBeefHalfKgWithSides() {
 }
 
 describe("order-kitchen-flow integration", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
   it("submits a takeaway order and shows it in the kitchen queue", async () => {
     const { repos, queryClient } = renderWithOrderProviders(
       <OrderRegistryView />,
@@ -209,5 +263,124 @@ describe("order-kitchen-flow integration", () => {
     expect(
       await screen.findByRole("button", { name: "Completar pedido" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows deferred scheduled tickets below immediate orders in the kitchen queue", async () => {
+    const { repos, queryClient } = renderWithOrderProviders(
+      <OrderRegistryView />,
+      { profile: waiterProfile },
+    );
+
+    await addBeefHalfKgWithSides();
+    await clickSendToKitchen();
+
+    await waitFor(() => {
+      expect(repos.getOrdersSnapshot()).toHaveLength(1);
+    });
+
+    await selectFulfillmentScheduledFarFuture();
+    await addBeefHalfKgWithSides();
+    await clickSendToKitchen();
+
+    await waitFor(() => {
+      expect(repos.getOrdersSnapshot()).toHaveLength(2);
+    });
+
+    const [immediateOrder, scheduledOrder] = repos.getOrdersSnapshot();
+    expect(immediateOrder?.fulfillmentTiming).toBe("immediate");
+    expect(scheduledOrder?.fulfillmentTiming).toBe("scheduled");
+
+    cleanup();
+    renderWithOrderProviders(<KitchenQueueView />, {
+      profile: grillMasterProfile,
+      repos,
+      queryClient,
+    });
+
+    const cards = await screen.findAllByText(/1x Beef 1\/2 kg/i);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]?.compareDocumentPosition(cards[1]!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(
+      screen.getAllByText(ORDER_COPY.fulfillmentImmediateBadge).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("sorts within-horizon scheduled tickets with immediate orders by sent time", async () => {
+    const { repos, queryClient } = renderWithOrderProviders(
+      <OrderRegistryView />,
+      { profile: waiterProfile },
+    );
+
+    await addBeefHalfKgWithSides();
+    await clickSendToKitchen();
+
+    await waitFor(() => {
+      expect(repos.getOrdersSnapshot()).toHaveLength(1);
+    });
+
+    await selectFulfillmentScheduledWithinHorizon();
+    await addBeefHalfKgWithSides();
+    await clickSendToKitchen();
+
+    await waitFor(() => {
+      expect(repos.getOrdersSnapshot()).toHaveLength(2);
+    });
+
+    expect(repos.getOrdersSnapshot()[0]?.fulfillmentTiming).toBe("immediate");
+    expect(repos.getOrdersSnapshot()[1]?.fulfillmentTiming).toBe("scheduled");
+
+    cleanup();
+    renderWithOrderProviders(<KitchenQueueView />, {
+      profile: grillMasterProfile,
+      repos,
+      queryClient,
+    });
+
+    const cards = await screen.findAllByText(/1x Beef 1\/2 kg/i);
+    expect(cards[0]?.compareDocumentPosition(cards[1]!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("persists optional customer fields on submit and shows them on the kitchen ticket", async () => {
+    const { repos, queryClient } = renderWithOrderProviders(
+      <OrderRegistryView />,
+      { profile: waiterProfile },
+    );
+
+    await userEvent.type(
+      screen.getByLabelText(ORDER_COPY.customerFirstName),
+      "María",
+    );
+    await userEvent.type(
+      screen.getByLabelText(ORDER_COPY.customerLastName),
+      "Pérez",
+    );
+    const phoneInputs = screen.getAllByLabelText(ORDER_COPY.customerPhone);
+    await userEvent.type(phoneInputs[phoneInputs.length - 1]!, "+584125550101");
+
+    await addBeefHalfKgWithSides();
+    await clickSendToKitchen();
+
+    await waitFor(() => {
+      expect(repos.getOrdersSnapshot()).toHaveLength(1);
+    });
+
+    const snapshot = repos.getOrdersSnapshot()[0]!;
+    expect(snapshot.customerFirstName).toBe("María");
+    expect(snapshot.customerLastName).toBe("Pérez");
+    expect(snapshot.customerPhone).toBe("+584125550101");
+
+    cleanup();
+    renderWithOrderProviders(<KitchenQueueView />, {
+      profile: grillMasterProfile,
+      repos,
+      queryClient,
+    });
+
+    expect(await screen.findByText(/María Pérez/i)).toBeInTheDocument();
+    expect(screen.getByText(/584125550101/i)).toBeInTheDocument();
   });
 });

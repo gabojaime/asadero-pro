@@ -7,11 +7,15 @@ import {
   type SessionContextValue,
 } from "@/domains/auth/presentation/providers/session-context";
 import { createInMemoryOrderRepos } from "../../infrastructure/testing/in-memory-order-repos";
+import { createInMemoryMerchantKitchenSettingsRepo } from "../../infrastructure/testing/in-memory-merchant-kitchen-settings-repo";
 import { OrdersTestProviders } from "../../infrastructure/testing/orders-test-context";
 
 type RenderOrdersOptions = {
   profile: SessionProfile;
   repos?: ReturnType<typeof createInMemoryOrderRepos>;
+  merchantSettingsRepo?: ReturnType<
+    typeof createInMemoryMerchantKitchenSettingsRepo
+  >;
   queryClient?: QueryClient;
 };
 
@@ -47,6 +51,8 @@ export function renderWithOrderProviders(
   renderOptions?: Omit<RenderOptions, "wrapper">,
 ) {
   const repos = options.repos ?? createInMemoryOrderRepos();
+  const merchantSettingsRepo =
+    options.merchantSettingsRepo ?? createInMemoryMerchantKitchenSettingsRepo();
   const queryClient = options.queryClient ?? createOrdersTestQueryClient();
 
   function Wrapper({ children }: { children: ReactNode }) {
@@ -58,6 +64,7 @@ export function renderWithOrderProviders(
               profile: options.profile,
               catalogRepo: repos.catalogRepo,
               orderRepo: repos.orderRepo,
+              merchantSettingsRepo,
               disableRealtime: true,
             }}
           >

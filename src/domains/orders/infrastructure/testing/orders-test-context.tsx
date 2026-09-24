@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { SessionProfile } from "@/domains/auth/domain/entities";
 import type {
   MenuCatalogRepository,
+  MerchantKitchenSettingsRepository,
   OrderRepository,
 } from "../../domain/repository";
 import type { InventoryDeductionRepository } from "@/domains/waste/domain/repository";
@@ -12,6 +13,7 @@ export type OrdersTestContextValue = {
   profile: SessionProfile;
   catalogRepo: MenuCatalogRepository;
   orderRepo: OrderRepository;
+  merchantSettingsRepo: MerchantKitchenSettingsRepository;
   deductionRepo?: InventoryDeductionRepository;
   disableRealtime?: boolean;
 };

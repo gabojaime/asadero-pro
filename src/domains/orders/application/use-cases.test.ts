@@ -3,7 +3,12 @@ import type { SessionProfile } from "@/domains/auth/domain/entities";
 import { createEmptyCart, type Cart, type MenuItem, type Order } from "../domain/entities";
 import { OrderError } from "../domain/errors";
 import type { InventoryDeductionRepository } from "@/domains/waste/domain/repository";
-import type { MenuCatalogRepository, OrderRepository } from "../domain/repository";
+import type {
+  MenuCatalogRepository,
+  MerchantKitchenSettingsRepository,
+  OrderRepository,
+} from "../domain/repository";
+import { DEFAULT_MERCHANT_TIMEZONE } from "../domain/merchant-local-time";
 import {
   completeOrder,
   listActiveOrders,
@@ -94,6 +99,11 @@ const insertedOrder: Order = {
   deliveryZone: null,
   status: "pending",
   totalAmount: 24,
+  fulfillmentTiming: "immediate",
+  readyByAt: null,
+  customerFirstName: null,
+  customerLastName: null,
+  customerPhone: null,
   sentToKitchenAt: new Date("2026-09-12T10:00:00Z"),
   readyAt: null,
   createdAt: new Date("2026-09-12T10:00:00Z"),
@@ -115,6 +125,18 @@ const servedOrder: Order = {
   status: "served",
   readyAt: new Date("2026-09-12T10:30:00Z"),
 };
+
+function createMerchantSettingsRepo(
+  overrides: Partial<MerchantKitchenSettingsRepository> = {},
+): MerchantKitchenSettingsRepository {
+  return {
+    getKitchenSettings: vi.fn().mockResolvedValue({
+      timezone: DEFAULT_MERCHANT_TIMEZONE,
+      kitchenPriorityHorizonMinutes: 45,
+    }),
+    ...overrides,
+  };
+}
 
 function createOrderRepo(
   overrides: Partial<OrderRepository> = {},
@@ -152,7 +174,13 @@ describe("submitOrder", () => {
       deliveryZone: "Centro",
     });
 
-    await submitOrder(cart, waiterProfile, catalogRepo, orderRepo);
+    await submitOrder(
+      cart,
+      waiterProfile,
+      catalogRepo,
+      orderRepo,
+      createMerchantSettingsRepo(),
+    );
 
     expect(orderRepo.insertOrder).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -168,7 +196,13 @@ describe("submitOrder", () => {
     const orderRepo = createOrderRepo();
     const catalogRepo = createCatalogRepo();
 
-    await submitOrder(buildCart(), waiterProfile, catalogRepo, orderRepo);
+    await submitOrder(
+      buildCart(),
+      waiterProfile,
+      catalogRepo,
+      orderRepo,
+      createMerchantSettingsRepo(),
+    );
 
     expect(orderRepo.insertOrder).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -209,20 +243,32 @@ describe("markOrderReady", () => {
 });
 
 describe("listActiveOrders", () => {
-  it("returns chronologically sorted orders", async () => {
-    const later = {
+  it("returns kitchen priority sorted orders with deferred scheduled below immediate", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:30:00Z"));
+
+    const immediate = insertedOrder;
+    const deferred = {
       ...insertedOrder,
       id: "88888888-8888-4888-8888-888888888888",
-      sentToKitchenAt: new Date("2026-09-12T11:00:00Z"),
+      fulfillmentTiming: "scheduled" as const,
+      readyByAt: new Date("2026-09-12T14:00:00Z"),
+      sentToKitchenAt: new Date("2026-09-12T09:00:00Z"),
     };
     const orderRepo = createOrderRepo({
-      listActiveOrders: vi.fn().mockResolvedValue([later, insertedOrder]),
+      listActiveOrders: vi.fn().mockResolvedValue([deferred, immediate]),
     });
 
-    const result = await listActiveOrders(MERCHANT_ID, orderRepo);
+    const result = await listActiveOrders(
+      MERCHANT_ID,
+      orderRepo,
+      createMerchantSettingsRepo(),
+    );
 
     expect(result[0]?.id).toBe(insertedOrder.id);
-    expect(result[1]?.id).toBe(later.id);
+    expect(result[1]?.id).toBe(deferred.id);
+
+    vi.useRealTimers();
   });
 });
 
